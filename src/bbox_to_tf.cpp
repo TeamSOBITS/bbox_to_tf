@@ -408,7 +408,6 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/filters/conditional_removal.h>
 #include <pcl/filters/passthrough.h>
-
 #include <pcl_ros/point_cloud.h>
 #include <pcl_ros/transforms.h>
 
@@ -418,9 +417,20 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
+
+#include <sensor_msgs/PointCloud2.h>
+
 #include "sobits_msgs/BoundingBoxes.h"
 #include "sobits_msgs/ObjectPose.h"
 #include "sobits_msgs/ObjectPoseArray.h"
+#include "sobits_msgs/RunCtrl.h"
+
+
+typedef pcl::PointXYZ           PointT;
+typedef pcl::PointCloud<PointT> PointCloud;
+typedef message_filters::sync_policies::ApproximateTime<sobits_msgs::BoundingBoxes, sensor_msgs::PointCloud2, sensor_msgs::Image> BBoxesCloudSyncPolicy;
 
 
 class BboxToTF {
@@ -432,7 +442,9 @@ class BboxToTF {
         tf2_ros::TransformBroadcaster tfBroadcaster_;
         
         std::string                   base_frame_name_;
-        std::string                   map_frame_name_;
+        // std::string                   map_frame_name_;
+
+        std::string                   bbox_topic_name_;
         std::string                   cloud_topic_name_;
         std::string                   img_topic_name_;
 
@@ -442,16 +454,18 @@ class BboxToTF {
         double                        min_obj_size_;
         double                        obj_grasping_hight_rate;
         double                        max_distance_to_object_;
-        double                        image_width;
         double                        cluster_tolerance;
         int                           min_clusterSize;
         int                           max_clusterSize;
         double                        leaf_size;
         bool                          execute_flag_;
+        bool                          is_error_;
 
         ros::Publisher                pub_obj_poses_;
-        ros::Publisher                pub_object_cloud_;
+        // ros::Publisher                pub_object_cloud_;
         ros::Publisher                pub_clusters_;
+
+        ros::ServiceServer run_ctr_srv_;
 
         std::unique_ptr<message_filters::Subscriber<sobits_msgs::BoundingBoxes>> sub_bboxes_;
         std::unique_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>>   sub_cloud_;
@@ -459,14 +473,90 @@ class BboxToTF {
 
         std::shared_ptr<message_filters::Synchronizer<BBoxesCloudSyncPolicy>>    sync_;
 
-        ros::Subscriber sub_ctr_;
-
         pcl::search::KdTree<PointT>::Ptr        kdtree_;
         pcl::EuclideanClusterExtraction<PointT> euclid_clustering_;
         pcl::VoxelGrid<PointT>                  voxel_;
+
+        cv_bridge::CvImagePtr cv_ptr_;
+        cv::Mat img_raw_;
+
+        void callback_BBoxCloud(const sobits_msgs::BoundingBoxesConstPtr &bbox_msg,
+                                const sensor_msgs::PointCloud2ConstPtr   &cloud_msg,
+                                const sensor_msgs::ImageConstPtr         &img_msg ) {
+            if (execute_flag_) {
+                is_error_ = false;
+                PointCloud::Ptr cloud_transform(new PointCloud());
+                pcl::fromROSMsg(*cloud_msg, *cloud_transform);
+                geometry_msgs::TransformStamped transformStampedFrame_;
+                try {
+                    transformStampedFrame_ = tfBuffer_.lookupTransform(base_frame_name_, cloud_msg->header.frame_id, ros::Time(0), ros::Duration(1.0));
+                    pcl_ros::transformPointCloud(*cloud_transform, *cloud_transform, transformStampedFrame_.transform);
+                    is_error_ = false;
+                } catch (tf2::TransformException &ex) {
+                    ROS_ERROR("Could NOT transform tf to: %s", ex.what());
+                    is_error_ = true;
+                }
+                if (!is_error_) {
+                    try {
+                        cv_ptr_ = cv_bridge::toCvCopy( img_msg, sensor_msgs::image_encodings::BGR8 );
+                        img_raw_ = cv_ptr_->image.clone();
+                        if (img_raw_.empty()) {
+                            ROS_ERROR("Input_image error");
+                            is_error_ = true;
+                        }
+                    } catch ( cv_bridge::Exception &e ) {
+                        ROS_ERROR("cv_bridge exception: %s", e.what());
+                        is_error_ = true;
+                    }
+                }
+                if (!is_error_) {
+                    // int img_width = img_raw_.cols;
+
+                    sobits_msgs::ObjectPoseArray object_pose_array;
+                    object_pose_array.header = bbox_msg->header;
+
+                    for (int i=0; i<bbox_msg->bounding_boxes.size(); i++) {
+                        PointCloud::Ptr cloud_bbox(new PointCloud());
+                        PointT center_point, min_pt, max_pt;
+                        center_point.x = cloud_transform->points[img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)].x;
+                        center_point.y = cloud_transform->points[img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)].y;
+                        center_point.z = cloud_transform->points[img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)].z;
+                        // const sobits_msgs::BoundingBox& bbox = bbox_msg->bounding_boxes[i];
+                        // for (int iy = bbox.ymin; iy < bbox.ymax; iy++) {
+                        //     for (int ix = bbox.xmin; ix < bbox.xmax; ix++) {
+                        //         cloud_bbox->points.push_back(cloud_transform->points[img_raw_.cols * iy + ix]);
+                        //     }
+                        // }
+                        // double max_z = -std::numeric_limits<double>::max();
+                        // for (int it = 0; it < cloud_bbox->points.size(); it++) {
+                        //         if (max_z < cloud_bbox->points[it].z) {
+                        //             max_z = cloud_bbox->points[it].z;
+                        //         }
+                        // }
+                    }
+                }
+            }
+        }
+        bool callback_RunCtr(sobits_msgs::RunCtrl::Request &req, sobits_msgs::RunCtrl::Response &res) {
+            res.response = req.request;
+            execute_flag_ = req.request;
+            return true;
+        }
     public:
         BboxToTF() : tfListener_(tfBuffer_) {
+            pub_obj_poses_    = nh_.advertise<sobits_msgs::ObjectPoseArray>("/bbox_to_tf/object_poses", 10);
+            // pub_object_cloud_ = nh_.advertise<PointCloud>("object_cloud", 1);
+            pub_clusters_     = nh_.advertise<visualization_msgs::MarkerArray>("/bbox_to_tf/clusters", 10);
+
+            run_ctr_srv_ = nh_.advertiseService("/bbox_to_tf/swich_ctrl", &BboxToTF::callback_RunCtr, this);
+
+            sub_bboxes_.reset(new message_filters::Subscriber<sobits_msgs::BoundingBoxes>(nh_, bbox_topic_name_, 5));
+            sub_cloud_.reset(new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, cloud_topic_name_, 5));
+            sub_img_.reset(new message_filters::Subscriber<sensor_msgs::Image>(nh_, img_topic_name_, 5));
+            
+            sync_.reset(new message_filters::Synchronizer<BBoxesCloudSyncPolicy>(BBoxesCloudSyncPolicy(200), *sub_bboxes_, *sub_cloud_, *sub_img_));
             sync_->registerCallback(boost::bind(&BboxToTF::callback_BBoxCloud, this, _1, _2, _3));
+            // sub_ctr_ = nh_.subscribe("detect_ctrl", 10, &BboxToTF::callbackControl, this);
         }
 };
 
