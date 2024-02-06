@@ -481,9 +481,6 @@ class BboxToTF {
         pcl::EuclideanClusterExtraction<PointT> euclid_clustering_;
         pcl::VoxelGrid<PointT>                  voxel_;
 
-        cv_bridge::CvImagePtr cv_ptr_;
-        cv::Mat img_raw_;
-
         void callback_BBoxCloud(const sobits_msgs::BoundingBoxesConstPtr &bbox_msg,
                                 const sensor_msgs::PointCloud2ConstPtr   &cloud_msg,
                                 const sensor_msgs::ImageConstPtr         &img_msg ) {
@@ -516,8 +513,8 @@ class BboxToTF {
                 if (!is_error_) {
                     // int img_width = img_raw_.cols;
 
-                    sobits_msgs::ObjectPoseArray object_pose_array;
-                    object_pose_array.header = bbox_msg->header;
+                    // sobits_msgs::ObjectPoseArray object_pose_array;
+                    // object_pose_array.header = bbox_msg->header;
 
                     for (int i=0; i<bbox_msg->bounding_boxes.size(); i++) {
                         PointCloud::Ptr cloud_bbox(new PointCloud());
@@ -525,6 +522,9 @@ class BboxToTF {
                         if (((img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)) < 0) || (cloud_transform->points.size() <= (img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)))) break;
                         if (checkNanInf(cloud_transform->points[img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)])) break;
                         cloud_bbox->points.push_back(cloud_transform->points[img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)]);
+                        double max_z = cloud_transform->points[img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)].z;
+                        double min_z = cloud_transform->points[img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)].z;
+                        cloud_bbox->header.frame_id = base_frame_name_;
                         for (int iy = 0; iy < (int)((bbox.ymax + bbox.ymin)/2); iy++) {
                             for (int ix = 0; ix < (int)((bbox.xmax + bbox.xmin)/2); ix++) {
                                 if ((ix == 0) && (iy == 0)) continue;
@@ -532,30 +532,69 @@ class BboxToTF {
                                     if (pt_i < 0) break;
                                     if (checkNanInf(cloud_bbox->points[pt_i])) break;
                                     int index, ix_num, iy_num;
-                                    ix_num = -1*ix;
-                                    iy_num = -1*iy;
+                                    ix_num = -ix;
+                                    iy_num = -iy;
                                     index = img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2) + iy_num) + (int)((bbox.xmax + bbox.xmin)/2) + ix_num;
                                     if ((0 <= index) && (index < cloud_transform->points.size())) {
                                         if (!checkNanInf(cloud_transform->points[index])) {
                                             if (euclidean_distance(cloud_transform->points[index], cloud_bbox->points[pt_i]) <= same_point_to_point_distance) {
                                                 cloud_bbox->points.push_back(cloud_transform->points[index]);
-                                                break;
+                                                if (max_z < cloud_transform->points[index].z) max_z = cloud_transform->points[index].z;
+                                                if (min_z > cloud_transform->points[index].z) min_z = cloud_transform->points[index].z;
                                             }
                                         }
                                     }
-                                    // int ix_num = -1*ix;
-                                    // int iy_num =    iy;
-                                    // index = img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2) + iy_num) + (int)((bbox.xmax + bbox.xmin)/2) + ix_num;
-                                    // if ((index < 0) && (cloud_transform->points.size() <= index)) continue;
-                                    // if ((std::sqrt(std::pow(cloud_transform->points[index].x - cloud_bbox->points[pt_i].x, 2) + 
-                                    //                std::pow(cloud_transform->points[index].y - cloud_bbox->points[pt_i].y, 2) +
-                                    //                std::pow(cloud_transform->points[index].z - cloud_bbox->points[pt_i].z, 2))) <= same_point_to_point_distance) {
-                                    //     cloud_bbox->points.push_back(cloud_transform->points[img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2) - iy) + (int)((bbox.xmax + bbox.xmin)/2) - ix]);
-                                    //     break;
-                                    // }
+                                    if (iy != 0) {
+                                        ix_num = -ix;
+                                        iy_num =  iy;
+                                        index = img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2) + iy_num) + (int)((bbox.xmax + bbox.xmin)/2) + ix_num;
+                                        if ((0 <= index) && (index < cloud_transform->points.size())) {
+                                            if (!checkNanInf(cloud_transform->points[index])) {
+                                                if (euclidean_distance(cloud_transform->points[index], cloud_bbox->points[pt_i]) <= same_point_to_point_distance) {
+                                                    cloud_bbox->points.push_back(cloud_transform->points[index]);
+                                                    if (max_z < cloud_transform->points[index].z) max_z = cloud_transform->points[index].z;
+                                                    if (min_z > cloud_transform->points[index].z) min_z = cloud_transform->points[index].z;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if (ix == 0) break;
+                                    ix_num =  ix;
+                                    iy_num = -iy;
+                                    index = img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2) + iy_num) + (int)((bbox.xmax + bbox.xmin)/2) + ix_num;
+                                    if ((0 <= index) && (index < cloud_transform->points.size())) {
+                                        if (!checkNanInf(cloud_transform->points[index])) {
+                                            if (euclidean_distance(cloud_transform->points[index], cloud_bbox->points[pt_i]) <= same_point_to_point_distance) {
+                                                cloud_bbox->points.push_back(cloud_transform->points[index]);
+                                                if (max_z < cloud_transform->points[index].z) max_z = cloud_transform->points[index].z;
+                                                if (min_z > cloud_transform->points[index].z) min_z = cloud_transform->points[index].z;
+                                            }
+                                        }
+                                    }
+                                    if (iy != 0) {
+                                        ix_num =  ix;
+                                        iy_num =  iy;
+                                        index = img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2) + iy_num) + (int)((bbox.xmax + bbox.xmin)/2) + ix_num;
+                                        if ((0 <= index) && (index < cloud_transform->points.size())) {
+                                            if (!checkNanInf(cloud_transform->points[index])) {
+                                                if (euclidean_distance(cloud_transform->points[index], cloud_bbox->points[pt_i]) <= same_point_to_point_distance) {
+                                                    cloud_bbox->points.push_back(cloud_transform->points[index]);
+                                                    if (max_z < cloud_transform->points[index].z) max_z = cloud_transform->points[index].z;
+                                                    if (min_z > cloud_transform->points[index].z) min_z = cloud_transform->points[index].z;
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
+                        ////////
+                        pcl::PassThrough<PointT> pass_z;
+                        pass_z.setFilterFieldName("z");
+                        pass_z.setFilterLimits(max_z - min_z, max_z);
+                        pass_z.setInputCloud(cloud_bbox);
+                        pass_z.filter(*cloud_bbox);
+                        ////////
                         // for (int ix = 0; ix < (int)((bbox.xmax + bbox.xmin)/2); ix++) {
                         //     cloud_transform->points[img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2) + ix]
                         //     cloud_transform->points[img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2) - ix]
@@ -589,7 +628,9 @@ class BboxToTF {
             execute_flag_ = req.request;
             return true;
         }
-        double euclidean_distance(PointT p1, PointT p2) return (std::sqrt(std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2) + std::pow(p1.z - p2.z, 2)));
+        double euclidean_distance(PointT p1, PointT p2) {
+            return (std::sqrt(std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2) + std::pow(p1.z - p2.z, 2)));
+        }
         // ((std::pow(cloud_transform->points[index].x - cloud_bbox->points[pt_i].x, 2) + 
         //   std::pow(cloud_transform->points[index].y - cloud_bbox->points[pt_i].y, 2) +
         //   std::pow(cloud_transform->points[index].z - cloud_bbox->points[pt_i].z, 2)))
