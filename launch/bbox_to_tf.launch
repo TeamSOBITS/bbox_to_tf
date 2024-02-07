@@ -1,0 +1,30 @@
+<launch>
+    <arg name="rviz"                    default="true"/>
+    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="rviz" args="-d $(find bbox_to_tf)/config/test.rviz"/>
+
+    <node pkg="bbox_to_tf" type="bbox_to_tf" name="bbox_to_tf" output="screen">
+        <!-- <param name="base_frame_name" value="base_footprint"/> -->
+        <param name="base_frame_name" value="azure_camera_base"/>
+
+        <!-- <param name="bbox_topic_name" value="objects_rect"/> -->
+        <param name="bbox_topic_name" value="/ssd_face_detect/object_rect"/>
+
+        <param name="cloud_topic_name" value="/points2"/>
+
+        <param name="img_topic_name" value="/rgb/image_raw"/>
+
+        <param name="execute_default" value="true"/>
+
+        <param name="cluster_tolerance" value="0.01"/>
+
+        <param name="min_clusterSize" value="100"/>
+
+        <param name="max_lusterSize" value="20000"/>
+
+        <param name="leaf_size" value="0.5"/>
+
+        <param name="same_point_to_point_distance" value="0.2"/>
+
+        <param name="noise_point_cloud_range" value="0.001"/>
+    </node>
+</launch>
