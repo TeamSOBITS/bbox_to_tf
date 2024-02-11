@@ -230,8 +230,7 @@
 //                     continue;
 //                 }
 
-//                 visualization_msgs::Marker marker
-//                     = makeMarker(base_frame_name_, "bounding_box", i, min_pt, max_pt, 0.0f, 1.0f, 0.0f, 0.5f);
+//                 visualization_msgs::Marker marker = makeMarker(base_frame_name_, "bounding_box", i, min_pt, max_pt, 0.0f, 1.0f, 0.0f, 0.5f);
 //                 marker_array.markers.push_back(marker);
 
 //                 Eigen::Vector4f xyz_centroid;
@@ -462,7 +461,7 @@ class BboxToTF {
         int                           min_clusterSize;
         int                           max_clusterSize;
         double                        leaf_size;
-        double                        same_point_to_point_distance;
+        // double                        same_point_to_point_distance;
         double                        noise_point_cloud_range;
         bool                          execute_flag_;
         bool                          is_error_;
@@ -558,6 +557,35 @@ class BboxToTF {
                                 }
                             }
                         }
+
+                        kdtree_->setInputCloud(cloud_bbox);
+                        euclid_clustering_.setInputCloud(cloud_bbox);
+                        std::vector<pcl::PointIndices> cluster_indices;
+                        euclid_clustering_.extract(cluster_indices);
+                        if (cluster_indices.size() == 0) {
+                            continue;
+                        }
+
+                        std::vector<int> obj_it;
+                        Eigen::Vector4f  min_pt, max_pt;
+                        double           distance = std::numeric_limits<double>::max();
+
+                        for (std::vector<pcl::PointIndices>::const_iterator it     = cluster_indices.begin(),
+                                                                            it_end = cluster_indices.end();
+                                                                            it != it_end;
+                                                                            it++) {
+                            Eigen::Vector4f tmp_min_pt, tmp_max_pt;
+                            pcl::getMinMax3D(*cloud_bbox, *it, tmp_min_pt, tmp_max_pt);
+                            double tmp_dis = std::sqrt(std::pow((tmp_min_pt.x() + tmp_max_pt.x()) / 2., 2)
+                                                    + std::pow((tmp_min_pt.y() + tmp_max_pt.y()) / 2., 2));
+                            
+                            if (distance > tmp_dis) {
+                                distance = tmp_dis;
+                                obj_it   = it->indices;
+                                max_pt   = tmp_max_pt;
+                                min_pt   = tmp_min_pt;
+                            }
+                        }
                         // pcl::PassThrough<PointT> pass_z;
                         // if (max_z >= (max_z - min_z + noise_point_cloud_range)) {
                         //     pass_z.setFilterFieldName("z");
@@ -599,7 +627,7 @@ class BboxToTF {
             pnh_.param("min_clusterSize", min_clusterSize, 100);
             pnh_.param("max_lusterSize", max_clusterSize, 20000);
             pnh_.param("leaf_size", leaf_size, 0.005);
-            pnh_.param("same_point_to_point_distance", same_point_to_point_distance, 0.03);
+            // pnh_.param("same_point_to_point_distance", same_point_to_point_distance, 0.03);
             pnh_.param("noise_point_cloud_range", noise_point_cloud_range, 0.01);
             
             kdtree_.reset(new pcl::search::KdTree<PointT>);

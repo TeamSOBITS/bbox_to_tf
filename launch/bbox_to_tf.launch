@@ -23,7 +23,7 @@
 
         <param name="leaf_size" value="0.5"/>
 
-        <param name="same_point_to_point_distance" value="0.2"/>
+        <!-- <param name="same_point_to_point_distance" value="0.2"/> -->
 
         <param name="noise_point_cloud_range" value="0.001"/>
     </node>
