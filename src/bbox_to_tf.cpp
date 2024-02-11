@@ -514,8 +514,8 @@ class BboxToTF {
                 if (!is_error_) {
                     // int img_width = img_raw_.cols;
 
-                    // sobits_msgs::ObjectPoseArray object_pose_array;
-                    // object_pose_array.header = bbox_msg->header;
+                    sobits_msgs::ObjectPoseArray object_pose_array;
+                    object_pose_array.header = bbox_msg->header;
 
                     for (int i=0; i<bbox_msg->bounding_boxes.size(); i++) {
                         PointCloud::Ptr cloud_bbox(new PointCloud());
@@ -562,9 +562,7 @@ class BboxToTF {
                         euclid_clustering_.setInputCloud(cloud_bbox);
                         std::vector<pcl::PointIndices> cluster_indices;
                         euclid_clustering_.extract(cluster_indices);
-                        if (cluster_indices.size() == 0) {
-                            continue;
-                        }
+                        if (cluster_indices.size() == 0) continue;
 
                         std::vector<int> obj_it;
                         Eigen::Vector4f  min_pt, max_pt;
@@ -577,7 +575,7 @@ class BboxToTF {
                             Eigen::Vector4f tmp_min_pt, tmp_max_pt;
                             pcl::getMinMax3D(*cloud_bbox, *it, tmp_min_pt, tmp_max_pt);
                             double tmp_dis = std::sqrt(std::pow((tmp_min_pt.x() + tmp_max_pt.x()) / 2., 2)
-                                                    + std::pow((tmp_min_pt.y() + tmp_max_pt.y()) / 2., 2));
+                                                    + std::pow((tmp_min_pt.y() + tmp_max_pt.y()) / 2., 2));   //??
                             
                             if (distance > tmp_dis) {
                                 distance = tmp_dis;
@@ -586,15 +584,76 @@ class BboxToTF {
                                 min_pt   = tmp_min_pt;
                             }
                         }
-                        // pcl::PassThrough<PointT> pass_z;
-                        // if (max_z >= (max_z - min_z + noise_point_cloud_range)) {
-                        //     pass_z.setFilterFieldName("z");
-                        //     pass_z.setFilterLimits(max_z - min_z + noise_point_cloud_range, max_z);
-                        //     pass_z.setInputCloud(cloud_bbox);
-                        //     pass_z.filter(*cloud_bbox);
-                        // }
+
+                        pcl::PassThrough<PointT> pass_x, pass_y, pass_z;
+                        pass_x.setFilterFieldName("x");
+                        if ((max_pt.x() - noise_point_cloud_range) > (min_pt.x() + noise_point_cloud_range)) pass_x.setFilterLimits(min_pt.x() + noise_point_cloud_range, max_pt.x() - noise_point_cloud_range);
+                        else pass_x.setFilterLimits(min_pt.x(), max_pt.x());
+                        pass_x.setInputCloud(cloud_bbox);
+                        pass_x.filter(*cloud_bbox);
+
+                        pass_y.setFilterFieldName("y");
+                        if ((max_pt.y() - noise_point_cloud_range) > (min_pt.y() + noise_point_cloud_range)) pass_y.setFilterLimits(min_pt.y() + noise_point_cloud_range, max_pt.y() - noise_point_cloud_range);
+                        else pass_y.setFilterLimits(min_pt.y(), max_pt.y());
+                        pass_y.setInputCloud(cloud_bbox);
+                        pass_y.filter(*cloud_bbox);
+
+                        pass_y.setFilterFieldName("z");
+                        if ((max_pt.z() - noise_point_cloud_range) > (min_pt.z() + noise_point_cloud_range)) pass_z.setFilterLimits(min_pt.z() + noise_point_cloud_range, max_pt.z() - noise_point_cloud_range);
+                        else pass_z.setFilterLimits(min_pt.z(), max_pt.z());
+                        pass_z.setInputCloud(cloud_bbox);
+                        pass_z.filter(*cloud_bbox);
+
+                        double x_min =  std::numeric_limits<double>::max();
+                        double y_min =  std::numeric_limits<double>::max();
+                        double z_min =  std::numeric_limits<double>::max();
+                        double x_max = -std::numeric_limits<double>::max();
+                        double y_max = -std::numeric_limits<double>::max();
+                        double z_max = -std::numeric_limits<double>::max();
+                        for (int i=0; i<cloud_bbox->points.size(); i++) {
+                            if (cloud_bbox->points[i].x < x_min) x_min = cloud_bbox->points[i].x;
+                            if (cloud_bbox->points[i].y < y_min) y_min = cloud_bbox->points[i].y;
+                            if (cloud_bbox->points[i].z < z_min) z_min = cloud_bbox->points[i].z;
+                            if (x_max < cloud_bbox->points[i].x) x_max = cloud_bbox->points[i].x;
+                            if (y_max < cloud_bbox->points[i].y) y_max = cloud_bbox->points[i].y;
+                            if (z_max < cloud_bbox->points[i].z) z_max = cloud_bbox->points[i].z;
+                        }
+                        // geometry_msgs::PointStamped object_pt;
+                        // object_pt.header.frame_id = base_frame_name_;
+                        // object_pt.header.stamp    = ros::Time::now();
+                        // object_pt.point.x         = (x_min + x_max)/2.;
+                        // object_pt.point.y         = (y_min + y_max)/2.;
+                        // object_pt.point.z         = (z_min + z_max)/2.;
+
+                        sobits_msgs::ObjectPose object_pose;
+                        object_pose.Class              = bbox.Class;
+                        object_pose.detect_id          = i;
+                        object_pose.pose.position.x    = (x_min + x_max)/2.;
+                        object_pose.pose.position.y    = (y_min + y_max)/2.;
+                        object_pose.pose.position.z    = (z_min + z_max)/2.;
+                        object_pose.pose.orientation.x = 0.0;
+                        object_pose.pose.orientation.y = 0.0;
+                        object_pose.pose.orientation.z = 0.0;
+                        object_pose.pose.orientation.w = 1.0;
+
+                        geometry_msgs::TransformStamped transformStampedObj;
+                        transformStampedObj.header.frame_id = base_frame_name_;
+                        transformStampedObj.child_frame_id = bbox.Class;
+                        transformStampedObj.header.stamp = ros::Time::now();
+                        transformStampedObj.transform.translation.x = (x_min + x_max)/2.;
+                        transformStampedObj.transform.translation.y = (y_min + y_max)/2.;
+                        transformStampedObj.transform.translation.z = (z_min + z_max)/2.;
+                        transformStampedObj.transform.rotation.x = 0.0;
+                        transformStampedObj.transform.rotation.y = 0.0;
+                        transformStampedObj.transform.rotation.z = 0.0;
+                        transformStampedObj.transform.rotation.w = 1.0;
+
+                        object_pose_array.object_poses.push_back(object_pose);
+                        tfBroadcaster_.sendTransform(transformStampedObj);
+
                         pub_object_cloud_.publish(cloud_bbox);
                     }
+                    pub_obj_poses_.publish(object_pose_array);
                 }
             }
         }
