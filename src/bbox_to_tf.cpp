@@ -445,7 +445,6 @@ class BboxToTF {
         tf2_ros::TransformBroadcaster tfBroadcaster_;
         
         std::string                   base_frame_name_;
-        // std::string                   map_frame_name_;
 
         std::string                   bbox_topic_name_;
         std::string                   cloud_topic_name_;
@@ -453,15 +452,10 @@ class BboxToTF {
 
         cv_bridge::CvImagePtr cv_ptr_;
         cv::Mat img_raw_;
-        
-        // double                        min_obj_size_;
-        // double                        obj_grasping_hight_rate;
-        // double                        max_distance_to_object_;
+
         double                        cluster_tolerance;
         int                           min_clusterSize;
         int                           max_clusterSize;
-        double                        leaf_size;
-        // double                        same_point_to_point_distance;
         double                        noise_point_cloud_range;
         bool                          execute_flag_;
         bool                          is_error_;
@@ -508,12 +502,10 @@ class BboxToTF {
                         }
                     } catch ( cv_bridge::Exception &e ) {
                         ROS_ERROR("cv_bridge exception: %s", e.what());
-                        is_error_ = true;
+                        is_error_ = false;
                     }
                 }
                 if (!is_error_) {
-                    // int img_width = img_raw_.cols;
-
                     sobits_msgs::ObjectPoseArray object_pose_array;
                     object_pose_array.header = bbox_msg->header;
 
@@ -526,9 +518,9 @@ class BboxToTF {
                         double max_z = cloud_transform->points[img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)].z;
                         double min_z = cloud_transform->points[img_raw_.cols * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)].z;
                         cloud_bbox->header.frame_id = base_frame_name_;
-                        // ROS_INFO("%4d,%4d======%4d,%4d", bbox.xmin, bbox.ymax, bbox.xmax, bbox.ymax);
-                        // ROS_INFO("    ||   ======   ||    ");
-                        // ROS_INFO("%4d,%4d======%4d,%4d\n", bbox.xmin, bbox.ymin, bbox.xmax, bbox.ymin);
+                        if ((0 <= (img_raw_.cols * (int)((bbox.ymax + bbox.ymin)/2) + (int)((bbox.xmax + bbox.xmin)/2))) && ((img_raw_.cols * (int)((bbox.ymax + bbox.ymin)/2) + (int)((bbox.xmax + bbox.xmin)/2)) < cloud_transform->points.size())) {
+                            if (checkNanInf(cloud_transform->points[img_raw_.cols * (int)((bbox.ymax + bbox.ymin)/2) + (int)((bbox.xmax + bbox.xmin)/2)])) cloud_bbox->points.push_back(cloud_transform->points[img_raw_.cols * (int)((bbox.ymax + bbox.ymin)/2) + (int)((bbox.xmax + bbox.xmin)/2)]);
+                        }
                         for (int iy = 0; iy <= (int)((bbox.ymax - bbox.ymin)/2); iy++) {
                             for (int ix = 0; ix <= (int)((bbox.xmax - bbox.xmin)/2); ix++) {
                                 if ((ix == 0) && (iy == 0)) continue;
@@ -568,14 +560,18 @@ class BboxToTF {
                         Eigen::Vector4f  min_pt, max_pt;
                         double           distance = std::numeric_limits<double>::max();
 
+                        if (cloud_transform->points.size() == 0) {
+                            if (!checkNanInf(cloud_transform->points[0])) continue;
+                        }
                         for (std::vector<pcl::PointIndices>::const_iterator it     = cluster_indices.begin(),
                                                                             it_end = cluster_indices.end();
                                                                             it != it_end;
                                                                             it++) {
                             Eigen::Vector4f tmp_min_pt, tmp_max_pt;
                             pcl::getMinMax3D(*cloud_bbox, *it, tmp_min_pt, tmp_max_pt);
-                            double tmp_dis = std::sqrt(std::pow((tmp_min_pt.x() + tmp_max_pt.x()) / 2., 2)
-                                                    + std::pow((tmp_min_pt.y() + tmp_max_pt.y()) / 2., 2));   //??
+                            double tmp_dis = std::sqrt(std::pow(((tmp_min_pt.x() + tmp_max_pt.x()) / 2.) - cloud_bbox->points[0].x, 2)
+                                                     + std::pow(((tmp_min_pt.y() + tmp_max_pt.y()) / 2.) - cloud_bbox->points[0].y, 2)
+                                                     + std::pow(((tmp_min_pt.y() + tmp_max_pt.y()) / 2.) - cloud_bbox->points[0].z, 2));
                             
                             if (distance > tmp_dis) {
                                 distance = tmp_dis;
@@ -618,12 +614,6 @@ class BboxToTF {
                             if (y_max < cloud_bbox->points[i].y) y_max = cloud_bbox->points[i].y;
                             if (z_max < cloud_bbox->points[i].z) z_max = cloud_bbox->points[i].z;
                         }
-                        // geometry_msgs::PointStamped object_pt;
-                        // object_pt.header.frame_id = base_frame_name_;
-                        // object_pt.header.stamp    = ros::Time::now();
-                        // object_pt.point.x         = (x_min + x_max)/2.;
-                        // object_pt.point.y         = (y_min + y_max)/2.;
-                        // object_pt.point.z         = (z_min + z_max)/2.;
 
                         sobits_msgs::ObjectPose object_pose;
                         object_pose.Class              = bbox.Class;
@@ -672,21 +662,15 @@ class BboxToTF {
         }
     public:
         BboxToTF() : tfListener_(tfBuffer_), nh_(), pnh_("~") {
-            // nh_.param("obj_under_rate", min_obj_size_, 0.08);
-            // nh_.param("map_frame_name", map_frame_name_, std::string("map"));
             pnh_.param("base_frame_name", base_frame_name_, std::string("base_footprint"));
             pnh_.param("bbox_topic_name", bbox_topic_name_, std::string("objects_rect"));
             pnh_.param("cloud_topic_name", cloud_topic_name_, std::string("/points2"));
             pnh_.param("img_topic_name", img_topic_name_, std::string("/rgb/image_raw"));
-            // nh_.param("obj_grasping_hight_rate", obj_grasping_hight_rate, 0.6);
-            // nh_.param("max_distance_to_object", max_distance_to_object_, -1.0);
             pnh_.param("execute_default", execute_flag_, true);
 
             pnh_.param("cluster_tolerance", cluster_tolerance, 0.01);
             pnh_.param("min_clusterSize", min_clusterSize, 100);
             pnh_.param("max_lusterSize", max_clusterSize, 20000);
-            pnh_.param("leaf_size", leaf_size, 0.005);
-            // pnh_.param("same_point_to_point_distance", same_point_to_point_distance, 0.03);
             pnh_.param("noise_point_cloud_range", noise_point_cloud_range, 0.01);
             
             kdtree_.reset(new pcl::search::KdTree<PointT>);
@@ -694,12 +678,11 @@ class BboxToTF {
             euclid_clustering_.setMinClusterSize(min_clusterSize);
             euclid_clustering_.setMaxClusterSize(max_clusterSize);
             euclid_clustering_.setSearchMethod(kdtree_);
-            voxel_.setLeafSize(leaf_size, leaf_size, leaf_size);
             pub_obj_poses_    = nh_.advertise<sobits_msgs::ObjectPoseArray>("/bbox_to_tf/object_poses", 10);
             pub_object_cloud_ = nh_.advertise<PointCloud>("/bbox_to_tf/object_cloud", 1);
             pub_clusters_     = nh_.advertise<visualization_msgs::MarkerArray>("/bbox_to_tf/clusters", 10);
 
-            run_ctr_srv_ = nh_.advertiseService("/bbox_to_tf/swich_ctrl", &BboxToTF::callback_RunCtr, this);
+            run_ctr_srv_ = nh_.advertiseService("/bbox_to_tf/run_ctr", &BboxToTF::callback_RunCtr, this);
 
             sub_bboxes_.reset(new message_filters::Subscriber<sobits_msgs::BoundingBoxes>(nh_, bbox_topic_name_, 5));
             sub_cloud_.reset(new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, cloud_topic_name_, 5));

@@ -1,30 +1,43 @@
 <launch>
-    <arg name="rviz"                    default="true"/>
-    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="rviz" args="-d $(find bbox_to_tf)/config/test.rviz"/>
+    <!-- base_frame_name -->
+    <arg name="base_frame_name"          default="base_footprint"/>
+
+    <!-- Topic name (sobits_msgs/BoundingBoxes) -->
+    <arg name="bbox_topic_name"          default="objects_rect"/>
+
+    <!-- Topic name (sensor_msgs/PointCloud2) -->
+    <arg name="cloud_topic_name"         default="/points2"/>
+
+    <!-- Topic name (sensor_msgs/Image) -->
+    <arg name="img_topic_name"           default="/rgb/image_raw"/>
+
+    <!-- ON/OFF (bool) -->
+    <arg name="execute_default"          default="true"/>
+
+    <!-- same point cloud range -->
+    <arg name="cluster_tolerance"        default="0.008"/>
+
+    <!-- clustering point cloud lower number of pieces -->
+    <arg name="min_clusterSize"          default="10"/>
+
+    <!-- clustering point cloud upper number of pieces -->
+    <arg name="max_lusterSize"           default="2000000"/>
+
+    <!-- limiter of object point cloud cut noise -->
+    <arg name="noise_point_cloud_range"          default="0.001"/>
 
     <node pkg="bbox_to_tf" type="bbox_to_tf" name="bbox_to_tf" output="screen">
-        <!-- <param name="base_frame_name" value="base_footprint"/> -->
-        <param name="base_frame_name" value="azure_camera_base"/>
-
-        <!-- <param name="bbox_topic_name" value="objects_rect"/> -->
-        <param name="bbox_topic_name" value="/ssd_face_detect/object_rect"/>
-
-        <param name="cloud_topic_name" value="/points2"/>
-
-        <param name="img_topic_name" value="/rgb/image_raw"/>
-
-        <param name="execute_default" value="true"/>
-
-        <param name="cluster_tolerance" value="0.01"/>
-
-        <param name="min_clusterSize" value="100"/>
-
-        <param name="max_lusterSize" value="20000"/>
-
-        <param name="leaf_size" value="0.5"/>
-
-        <!-- <param name="same_point_to_point_distance" value="0.2"/> -->
-
-        <param name="noise_point_cloud_range" value="0.001"/>
+        <param name="base_frame_name"          value="$(arg base_frame_name)" />
+        <param name="bbox_topic_name"          value="$(arg bbox_topic_name)" />
+        <param name="cloud_topic_name"         value="$(arg cloud_topic_name)" />
+        <param name="img_topic_name"           value="$(arg img_topic_name)" />
+        <param name="execute_default"          value="$(arg execute_default)" />
+        <param name="cluster_tolerance"        value="$(arg cluster_tolerance)" />
+        <param name="min_clusterSize"          value="$(arg min_clusterSize)"/>
+        <param name="max_lusterSize"           value="$(arg max_lusterSize)"/>
+        <param name="noise_point_cloud_range"  value="$(arg noise_point_cloud_range)"/>
     </node>
+
+    <arg name="rviz"                    default="false"/>
+    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="rviz" args="-d $(find bbox_to_tf)/config/bbox_to_tf.rviz"/>
 </launch>
