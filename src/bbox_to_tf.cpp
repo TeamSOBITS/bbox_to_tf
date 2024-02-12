@@ -682,7 +682,7 @@ class BboxToTF {
             pub_object_cloud_ = nh_.advertise<PointCloud>("/bbox_to_tf/object_cloud", 1);
             pub_clusters_     = nh_.advertise<visualization_msgs::MarkerArray>("/bbox_to_tf/clusters", 10);
 
-            run_ctr_srv_ = nh_.advertiseService("/bbox_to_tf/run_ctr", &BboxToTF::callback_RunCtr, this);
+            run_ctr_srv_ = pnh_.advertiseService("run_ctr", &BboxToTF::callback_RunCtr, this);
 
             sub_bboxes_.reset(new message_filters::Subscriber<sobits_msgs::BoundingBoxes>(nh_, bbox_topic_name_, 5));
             sub_cloud_.reset(new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, cloud_topic_name_, 5));
