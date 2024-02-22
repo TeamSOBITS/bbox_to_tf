@@ -583,7 +583,7 @@ class BboxToTF {
 
                         pcl::PassThrough<PointT> pass_x, pass_y, pass_z;
                         pass_x.setFilterFieldName("x");
-                        if ((max_pt.x() - noise_point_cloud_range) > (min_pt.x() + noise_point_cloud_range)) pass_x.setFilterLimits(min_pt.x() + noise_point_cloud_range, max_pt.x() - noise_point_cloud_range);
+                        if ((max_pt.x() - noise_point_cloud_range) > min_pt.x()) pass_x.setFilterLimits(min_pt.x(), max_pt.x() - noise_point_cloud_range);
                         else pass_x.setFilterLimits(min_pt.x(), max_pt.x());
                         pass_x.setInputCloud(cloud_bbox);
                         pass_x.filter(*cloud_bbox);
@@ -595,7 +595,7 @@ class BboxToTF {
                         pass_y.filter(*cloud_bbox);
 
                         pass_y.setFilterFieldName("z");
-                        if ((max_pt.z() - noise_point_cloud_range) > (min_pt.z() + noise_point_cloud_range)) pass_z.setFilterLimits(min_pt.z() + noise_point_cloud_range, max_pt.z() - noise_point_cloud_range);
+                        if (max_pt.z() > (min_pt.z() + noise_point_cloud_range)) pass_z.setFilterLimits(min_pt.z() + noise_point_cloud_range, max_pt.z());
                         else pass_z.setFilterLimits(min_pt.z(), max_pt.z());
                         pass_z.setInputCloud(cloud_bbox);
                         pass_z.filter(*cloud_bbox);
@@ -678,9 +678,9 @@ class BboxToTF {
             euclid_clustering_.setMinClusterSize(min_clusterSize);
             euclid_clustering_.setMaxClusterSize(max_clusterSize);
             euclid_clustering_.setSearchMethod(kdtree_);
-            pub_obj_poses_    = nh_.advertise<sobits_msgs::ObjectPoseArray>("/bbox_to_tf/object_poses", 10);
-            pub_object_cloud_ = nh_.advertise<PointCloud>("/bbox_to_tf/object_cloud", 1);
-            pub_clusters_     = nh_.advertise<visualization_msgs::MarkerArray>("/bbox_to_tf/clusters", 10);
+            pub_obj_poses_    = pnh_.advertise<sobits_msgs::ObjectPoseArray>("object_poses", 10);
+            pub_object_cloud_ = pnh_.advertise<PointCloud>("object_cloud", 1);
+            pub_clusters_     = pnh_.advertise<visualization_msgs::MarkerArray>("clusters", 10);
 
             run_ctr_srv_ = pnh_.advertiseService("run_ctr", &BboxToTF::callback_RunCtr, this);
 
@@ -697,7 +697,7 @@ class BboxToTF {
 
 
 int main(int argc, char **argv) {
-    ros::init(argc, argv, "bbox_to_tf_node");
+    ros::init(argc, argv, "bbox_to_tf");
     BboxToTF bbox_to_tf;
     ros::spin();
     return 0;

@@ -1,5 +1,8 @@
 <launch>
     <!-- base_frame_name -->
+    <arg name="node_name"          default="bbox_to_tf"/>
+
+    <!-- base_frame_name -->
     <arg name="base_frame_name"          default="base_footprint"/>
 
     <!-- Topic name (sobits_msgs/BoundingBoxes) -->
@@ -24,9 +27,9 @@
     <arg name="max_lusterSize"           default="2000000"/>
 
     <!-- limiter of object point cloud cut noise -->
-    <arg name="noise_point_cloud_range"          default="0.001"/>
+    <arg name="noise_point_cloud_range"          default="0.01"/>
 
-    <node pkg="bbox_to_tf" type="bbox_to_tf" name="bbox_to_tf" output="screen">
+    <node pkg="bbox_to_tf" type="bbox_to_tf" name="$(arg node_name)" output="screen">
         <param name="base_frame_name"          value="$(arg base_frame_name)" />
         <param name="bbox_topic_name"          value="$(arg bbox_topic_name)" />
         <param name="cloud_topic_name"         value="$(arg cloud_topic_name)" />
