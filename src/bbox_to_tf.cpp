@@ -594,7 +594,7 @@ class BboxToTF {
                         pass_y.setInputCloud(cloud_bbox);
                         pass_y.filter(*cloud_bbox);
 
-                        pass_y.setFilterFieldName("z");
+                        pass_z.setFilterFieldName("z");
                         if (max_pt.z() > (min_pt.z() + noise_point_cloud_range)) pass_z.setFilterLimits(min_pt.z() + noise_point_cloud_range, max_pt.z());
                         else pass_z.setFilterLimits(min_pt.z(), max_pt.z());
                         pass_z.setInputCloud(cloud_bbox);

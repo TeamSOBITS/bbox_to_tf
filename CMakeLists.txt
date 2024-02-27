@@ -134,8 +134,8 @@ include_directories(
 #   src/${PROJECT_NAME}/bbox_to_tf.cpp
 # )
 add_executable(bbox_to_tf src/bbox_to_tf.cpp)
-add_dependencies(bbox_to_tf ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(bbox_to_tf ${catkin_LIBRARIES})
+add_dependencies(bbox_to_tf ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
