@@ -4,7 +4,7 @@ project(bbox_to_tf)
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++14)
 
-find_package(OpenCV 4.6.0 REQUIRED PATHS "/opt/opencv/opencv_4.6.0/")
+find_package(OpenCV 4.9.0 REQUIRED PATHS "/opt/opencv/opencv_4.9.0/")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)

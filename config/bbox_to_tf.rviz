@@ -117,9 +117,21 @@ Visualization Manager:
       Value: true
     - Class: rviz/TF
       Enabled: true
+      Filter (blacklist): ""
+      Filter (whitelist): ""
       Frame Timeout: 15
       Frames:
         All Enabled: true
+        Cookies:
+          Value: true
+        Cup:
+          Value: true
+        Detergent:
+          Value: true
+        Dice:
+          Value: true
+        Lunch_Box:
+          Value: true
         azure_camera_base:
           Value: true
         azure_cover_link:
@@ -136,8 +148,6 @@ Visualization Manager:
           Value: true
         base_footprint:
           Value: true
-        green_tea:
-          Value: true
       Marker Alpha: 1
       Marker Scale: 1
       Name: TF
@@ -146,6 +156,16 @@ Visualization Manager:
       Show Names: true
       Tree:
         base_footprint:
+          Cookies:
+            {}
+          Cup:
+            {}
+          Detergent:
+            {}
+          Dice:
+            {}
+          Lunch_Box:
+            {}
           azure_camera_base:
             azure_plug_base_link:
               azure_cover_link:
@@ -156,8 +176,6 @@ Visualization Manager:
                     {}
                   azure_rgb_camera_link:
                     {}
-          green_tea:
-            {}
       Update Interval: 0
       Value: true
     - Class: rviz/Image
@@ -200,7 +218,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 2.246513843536377
+      Distance: 1.9162254333496094
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -208,17 +226,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.7267609238624573
-        Y: 0.019050002098083496
-        Z: 0.2663382887840271
+        X: 0.609750509262085
+        Y: 0.0710492730140686
+        Z: 0.21723546087741852
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5353983044624329
+      Pitch: 0.930397629737854
       Target Frame: <Fixed Frame>
-      Yaw: 1.8454010486602783
+      Yaw: 2.24039626121521
     Saved: ~
 Window Geometry:
   Displays:

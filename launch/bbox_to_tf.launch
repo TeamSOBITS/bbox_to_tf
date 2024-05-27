@@ -29,7 +29,7 @@
     <!-- limiter of object point cloud cut noise -->
     <arg name="noise_point_cloud_range"          default="0.01"/>
 
-    <node pkg="bbox_to_tf" type="bbox_to_tf" name="$(arg node_name)" output="screen">
+    <node pkg="bbox_to_tf" type="bbox_to_tf" name="$(arg node_name)" output="screen" respawn="false">
         <param name="base_frame_name"          value="$(arg base_frame_name)" />
         <param name="bbox_topic_name"          value="$(arg bbox_topic_name)" />
         <param name="cloud_topic_name"         value="$(arg cloud_topic_name)" />

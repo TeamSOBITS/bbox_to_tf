@@ -84,7 +84,10 @@ class BboxToTF {
         void callback_BBoxCloud(const sobits_msgs::BoundingBoxesConstPtr &bbox_msg,
                                 const sensor_msgs::PointCloud2ConstPtr   &cloud_msg,
                                 const sensor_msgs::ImageConstPtr         &img_msg ) {
-            if (execute_flag_) {
+            if (!execute_flag_) {
+            	return;
+            }
+            else {
                 is_error_ = false;
                 PointCloud::Ptr cloud_transform(new PointCloud());
                 pcl::fromROSMsg(*cloud_msg, *cloud_transform);
