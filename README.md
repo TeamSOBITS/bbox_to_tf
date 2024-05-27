@@ -113,15 +113,15 @@
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/TeamSOBITS/speech_recognition_whisper.svg?style=for-the-badge
-[contributors-url]: https://github.com/TeamSOBITS/speech_recognition_whisper/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/TeamSOBITS/speech_recognition_whisper.svg?style=for-the-badge
-[forks-url]: https://github.com/TeamSOBITS/speech_recognition_whisper/network/members
-[stars-shield]: https://img.shields.io/github/stars/TeamSOBITS/speech_recognition_whisper.svg?style=for-the-badge
-[stars-url]: https://github.com/TeamSOBITS/speech_recognition_whisper/stargazers
-[issues-shield]: https://img.shields.io/github/issues/TeamSOBITS/speech_recognition_whisper.svg?style=for-the-badge
-[issues-url]: https://github.com/TeamSOBITS/speech_recognition_whisper/issues
-[license-shield]: https://img.shields.io/github/license/TeamSOBITS/speech_recognition_whisper.svg?style=for-the-badge
+[contributors-shield]: https://img.shields.io/github/contributors/TeamSOBITS/bbox_to_tf.svg?style=for-the-badge
+[contributors-url]: https://github.com/TeamSOBITS/bbox_to_tf/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/TeamSOBITS/bbox_to_tf.svg?style=for-the-badge
+[forks-url]: https://github.com/TeamSOBITS/bbox_to_tf/network/members
+[stars-shield]: https://img.shields.io/github/stars/TeamSOBITS/bbox_to_tf.svg?style=for-the-badge
+[stars-url]: https://github.com/TeamSOBITS/bbox_to_tf/stargazers
+[issues-shield]: https://img.shields.io/github/issues/TeamSOBITS/bbox_to_tf.svg?style=for-the-badge
+[issues-url]: https://github.com/TeamSOBITS/bbox_to_tf/issues
+[license-shield]: https://img.shields.io/github/license/TeamSOBITS/bbox_to_tf.svg?style=for-the-badge
 [license-url]: LICENSE
 
 <p align="right">(<a href="#readme-top">上に戻る</a>)</p>
