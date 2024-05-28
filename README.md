@@ -158,10 +158,14 @@ run_ctrとしてTF化するかしないかのON/OFF(True/False)を切り替え�
 TF化する他に，base_frame_nameから見た座標や各物体にかかる点群をPublishしている．
 基本的に，競合しないようにnode_nameに依存した命名となる．
 - 座標
- * node_name + "/object_poses" (Topic: sobits_msgs::ObjectPoseArray)
+  ```sh
+  node_name + "/object_poses" (Topic: sobits_msgs::ObjectPoseArray)
+  ```
 
 - 点群
- * node_name + "/object_poses" (Topic: pcl/PointCloud< pcl/PointXYZ >)
+  ```sh
+  node_name + "/object_poses" (Topic: pcl/PointCloud< pcl/PointXYZ >)
+  ```
 
  <p align="right">(<a href="#readme-top">上に戻る</a>)</p>
 
