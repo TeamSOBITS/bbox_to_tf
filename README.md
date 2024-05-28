@@ -152,7 +152,10 @@
 ### Services
 run_ctrとしてTF化するかしないかのON/OFF(True/False)を切り替えることができます．
 基本的に，競合しないようにnode_nameに依存した命名となる．
- * node_name + "/run_ctr" (Service: sobits_msgs/RunCtrl)
+- ON/OFF切り替え
+  ```sh
+  node_name + "/run_ctr" (Service: sobits_msgs/RunCtrl)
+  ```
 
 ### Topic
 TF化する他に，base_frame_nameから見た座標や各物体にかかる点群をPublishしている．
