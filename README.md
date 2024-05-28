@@ -164,7 +164,7 @@ TF化する他に，base_frame_nameから見た座標や各物体にかかる点
 
 - 点群
   ```sh
-  node_name + "/object_poses" (Topic: pcl/PointCloud< pcl/PointXYZ >)
+  node_name + "/object_poses" (Topic: pcl/PointCloud(pcl/PointXYZ))
   ```
 
  <p align="right">(<a href="#readme-top">上に戻る</a>)</p>
