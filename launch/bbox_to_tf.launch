@@ -3,7 +3,7 @@
     <arg name="node_name"          default="bbox_to_tf"/>
 
     <!-- base_frame_name -->
-    <arg name="base_frame_name"          default="azure_camera_base"/>
+    <arg name="base_frame_name"          default="base_footprint"/>
 
     <!-- Topic name (sobits_msgs/BoundingBoxes) -->
     <arg name="bbox_topic_name"          default="/ulfg_face_detect/faces_rect"/>

@@ -67,7 +67,7 @@ class BboxToTF {
 
         ros::Publisher                pub_obj_poses_;
         ros::Publisher                pub_object_cloud_;
-        ros::Publisher                pub_clusters_;
+        // ros::Publisher                pub_clusters_;
 
         ros::ServiceServer run_ctr_srv_;
 
@@ -280,7 +280,7 @@ class BboxToTF {
             euclid_clustering_.setSearchMethod(kdtree_);
             pub_obj_poses_    = pnh_.advertise<sobits_msgs::ObjectPoseArray>("object_poses", 10);
             pub_object_cloud_ = pnh_.advertise<PointCloud>("object_cloud", 1);
-            pub_clusters_     = pnh_.advertise<visualization_msgs::MarkerArray>("clusters", 10);
+            // pub_clusters_     = pnh_.advertise<visualization_msgs::MarkerArray>("clusters", 10);
 
             run_ctr_srv_ = pnh_.advertiseService("run_ctr", &BboxToTF::callback_RunCtr, this);
 
