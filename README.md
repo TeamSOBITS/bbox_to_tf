@@ -158,7 +158,7 @@ run_ctrとしてTF化するかしないかのON/OFF(True/False)を切り替え�
   ```
 
 ### Topic
-TF化する他に，base_frame_nameから見た座標や各物体にかかる点群をPublishしている．
+TF化する他に，base_frame_nameから見た座標や各物体にかかる点群をPublishしています．
 基本的に，競合しないようにnode_nameに依存した命名となる．
 - 座標
   ```sh
