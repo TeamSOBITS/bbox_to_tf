@@ -153,7 +153,7 @@ Therefore, this section describes the contents and structure of [bbox_to_tf.laun
 ### Services
 The function can be turned ON/OFF(True/False) as run_ctr.
 The naming is dependent on the node_name so that Topic names do not conflict.
-- ON/OFF切り替え
+- ON/OFF
   ```sh
   node_name + "/run_ctr" (Service: sobits_msgs/RunCtrl)
   ```
