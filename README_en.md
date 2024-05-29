@@ -12,49 +12,50 @@
 
 <!-- 目次 -->
 <details>
-  <summary>目次</summary>
+  <summary>Table of Contents</summary>
   <ol>
     <li>
-      <a href="#概要">概要</a>
+      <a href="#Introduction">Introduction</a>
     </li>
     <li>
-      <a href="#セットアップ">セットアップ</a>
+      <a href="#Getting Started">Getting Started</a>
       <ul>
-        <li><a href="#環境条件">環境条件</a></li>
-        <li><a href="#インストール方法">インストール方法</a></li>
+        <li><a href="#Requirements">Requirements</a></li>
+        <li><a href="#Installation">Installation</a></li>
       </ul>
     </li>
-    <li><a href="#launchファイルの構成">launchファイルの構成</a></li>
-    <li><a href="#マイルストーン">マイルストーン</a></li>
+    <li><a href="#Composition of launch file">Composition of launch file</a></li>
+    <li><a href="#Milestone">Milestone</a></li>
+    <li><a href="#Acknowledgements">Acknowledgements</a></li>
   </ol>
 </details>
 
 
 <!-- レポジトリの概要 -->
-## 概要
+## Introduction
 
 <!-- [![Product Name Screen Shot][product-screenshot]](https://example.com) -->
 
-画像認識によって検出をしたBoundingBoxを元に点群を重ね合わせることで3次元座標(TF)化するパッケージです．\
-基本的にRGB-Dカメラによって検出したBoundingBox(sobits_msgs/BoundingBoxes)と，その画像(sensor_msgs/Image)，そのカメラの点群(sensor_msgs/PointCloud2)を用いて3次元化します．
+This package converts the BoundingBox detected by image recognition into 3D coordinates (TF) using a point cloud.\
+Basically, the BoundingBoxes detected by the RGB-D camera (sobits_msgs/BoundingBoxes), their images (sensor_msgs/Image), and the point clouds from that camera (sensor_msgs/PointCloud2) are used for 3D.
 
 > [!NOTE]
-> このパッケージは基本的に画像処理・物体認識をしたあとに使うものなので，そのパッケージのinstall.shによってインストールされます．
-> 例えばYOLOによって検出した物体を3次元座標にするため，YOLOのパッケージのinstall.shによってインストールされます．
+> This package is basically used after image processing and object recognition, so it is installed by other packages.
 
 
-<p align="right">(<a href="#readme-top">上に戻る</a>)</p>
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 <!-- セットアップ -->
-## セットアップ
+## Getting Started
 
-ここで，本リポジトリのセットアップ方法について説明します．\
-これを依存しているパッケージのinstall.shに書き込んでください．
+This section describes how to set up this repository.\
+Write this into the install.sh of the package on which it depends.
 
-### 環境条件
+### Requirements
 
-まず，以下の環境を整えてから，次のインストール段階に進んでください．
+
 
 | System  | Version |
 | ------------- | ------------- |
@@ -63,124 +64,124 @@
 | Python | 3.8 |
 
 > [!NOTE]
-> `Ubuntu`や`ROS`のインストール方法に関しては，[SOBITS Manual](https://github.com/TeamSOBITS/sobits_manual#%E9%96%8B%E7%99%BA%E7%92%B0%E5%A2%83%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6)を参照してください．
+> If you need to install `Ubuntu` or `ROS`, please check our [SOBITS Manual](https://github.com/TeamSOBITS/sobits_manual#%E9%96%8B%E7%99%BA%E7%92%B0%E5%A2%83%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6).
 
-<p align="right">(<a href="#readme-top">上に戻る</a>)</p>
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-### インストール方法
+### Installation
 
-1. ROSの`src`フォルダに移動します．
+1. Change directory
    ```sh
    $ cd ~/catkin_ws/src
    ```
-2. 本レポジトリをcloneします．
+2. clone TeamSOBITS/human_feature_detect
    ```sh
    $ git clone https://github.com/TeamSOBITS/bbox_to_tf.git
    ```
-3. パッケージをコンパイルします．
+3. compile
    ```sh
    $ cd ~/catkin_ws/
    $ catkin_make
    ```
 
-<p align="right">(<a href="#readme-top">上に戻る</a>)</p>
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 <!-- 実行・操作方法 -->
-## launchファイルの構成
+## Composition of launch file
 
-このパッケージは基本的に単体では起動せず，[bbox_to_tf.launch](/launch/bbox_to_tf.launch)を必用な画像処理パッケージのlaunchからincludeして使用します．\
-そのため，ここでは[bbox_to_tf.launch](/launch/bbox_to_tf.launch)の中身や構成に関して説明します．
+This package is basically not launched by itself, but [bbox_to_tf.launch](/launch/bbox_to_tf.launch) is written as an include from the launch of the necessary image processing package.\
+Therefore, this section describes the contents and structure of [bbox_to_tf.launch](/launch/bbox_to_tf.launch).
 
 - node_name\
-  node_nameは，3次元化するノードの名前です．\
-  3次元化したい画像認識ノードが1つとは限らないので，複数でもノード名が競合しないようにノード名を指定できるようになっています．
-  例えばyolov8とssdによる画像認識からそれぞれTF化したいとき，yolov8_to_tf_nodeとssd_to_tf_nodeのように競合しないようにすることができます．
+  node_name is the name of the node to be 3Dized.\
+  Since there may not be a single image recognition node that you want to 3Dize, you can specify the node name to avoid conflicts even if there are multiple nodes.
+  For example, if you want to convert image recognition by yolov8 and ssd to TF respectively, you can specify yolov8_to_tf_node and ssd_to_tf_node of each node_name to avoid conflicts.
 
 - base_frame_name\
-  base_frame_nameは3次元化する上で何を基準フレームとして座標を得るかです．\
-  ロボットの座標を基準にする場合，base_footprintとなる．\
-  ロボットの足元の中心を原点(0,0,0)として各認識した物体の3次元座標を生成します．
+  base_frame_name is the base frame from which the coordinates are obtained in 3D.\
+  If the coordinates of the robot are used as the base frame, base_footprint is used.\
+  The 3D coordinates of each recognized object are generated using the center of the robot's feet as the origin (0,0,0).
 
 - bbox_topic_name\
-  bbox_topic_nameはBoundingBoxのトピック名です．
-  具体的には，sobits_msgs/BoundingBoxes型のメッセージが飛んでいるトピック名を指定する．\
-  これはSOBITSが独自に作ったカスタムROSメッセージであるためsobits_msgsをgit cloneしてある必用があります．\
-  しかし，このパッケージに依存しているパッケージのinstall.shで既にgit cloneされているはずです．
+  bbox_topic_name is the name of the BoundingBox topic.
+  Specifically, it specifies the name of the topic on which messages of type sobits_msgs/BoundingBoxes are flying.\
+  This is a custom ROS message created by SOBITS on its own, so it is necessary to have sobits_msgs git clone.\
+  However, it should already be git cloned in the install.sh of the packages that depend on this package.
 
 - cloud_topic_name\
-  cloud_topic_nameは点群のトピック名です．
-  具体的には，sensor_msgs/PointCloud2型のメッセージが飛んでいるトピック名を指定する．\
-  BoundingBoxの情報から，その領域に点群を飛ばします．
-  そのとき，物体の距離感とともに点群のクラス分けを行い位置を取得します．
+  cloud_topic_name is the topic name of the point cloud.
+  Specifically, it specifies the name of the topic on which messages of type sensor_msgs/PointCloud2 are flying.\
+  Based on the information in the BoundingBox, a point cloud is flown to the area.
+  At that time, the position is obtained by classifying the point cloud as well as the distance of the object.
 
 - img_topic_name\
-  img_topic_nameはこの画像認識をしている画像のトピック名です．\
-  具体的には，sensor_msgs/Image型のメッセージが飛んでいるトピック名を指定する．\
-  画像と点群の関係を見るために参照している．
+  img_topic_name is the topic name of the image for which this image recognition is performed.\
+  Specifically, it specifies the name of the topic on which messages of type sensor_msgs/Image are flying.\
+  It is referenced to see the relationship between the image and the point cloud.
 
 - execute_default\
-  execute_defaultはデフォルトでTFを出すかどうかです．\
-  OFF(False)にしていても，使うときにrun_ctrでON(True)にすることもできる．
+  execute_default is whether or not TF is issued by default.\
+  Even if it is OFF (false), it can be also turned ON (true) with run_ctr when it is used.
 
 - cluster_tolerance\
-  どの程度離れた点群までは同一の物体とみなすかのしきい値です．\
-  BoundingBox内に点群を飛ばした場合に，対象物に点群があたり，しきい値いないにある点群を1物体とみなしクラス分けを行います．
-  そのため，あまり大きくすると点群1つ1つの探索範囲が広がり処理が遅くなってしまいます．
+  This is a threshold value that determines how close a group of points is considered to be the same object.\
+  When a point cloud is flown into the BoundingBox, it is classified as a single object if the point cloud hits the object and is within the threshold.
+  Therefore, if the threshold is too large, the search area for each point cloud will increase and processing will become slower.
 
 - min_clusterSize\
-  どの程度の数以下の点群の集まりは対象物の点群から棄却するかのしきい値です．\
-  点群をクラス分けした際に，この数以下の点群数だったらノイズとみなし棄却します．
+  This is a threshold value that determines how many or fewer points should be rejected from the object point cloud.\
+  When a point cloud is classified, if the number of points is less than or equal to this threshold, it is considered as noise and rejected.
 
 - max_lusterSize\
-  どの程度の数以上の点群の集まりは対象物の点群から棄却するかのしきい値です．\
-  点群をクラス分けした際に，この数以上の点群数だったら全く別の対象物(物体だったら床の点群など)を捉えてしまったとみなし棄却します．
+  Threshold for how many or more point clouds should be rejected from the object's point cloud.\
+  If the number of points in a point cloud is greater than this threshold, it is considered to be a completely different object (e.g., a floor point cloud for an object) and is rejected.
 
 - noise_point_cloud_range\
-  対象の物体の点群からノイズ面を除去し，中心座標に近づけるため除去量です．\
-  クラス分けした点群から物体を抽出した後，床や背後の壁，左右の壁などx,y,z方向に点群をこの値分，更にカットします．
-  こうすることで，より物体の部分のみにかかる点群に絞ることができます．
-  しかし値を大きくしすぎると，物体分の点群まで多く削いでしまうため注意が必用です．
+  The amount of removal to remove noise surfaces from the object point cloud and bring it closer to the center coordinates.
+  After extracting the object from the classified point cloud, the point cloud is further cut in the x, y, and z directions by this value, including the floor, back wall, and left and right walls.
+  In this way, the point cloud can be reduced to a point cloud that covers only a small portion of the object.
+  However, be careful not to increase the value too much, as this will remove many points from the object.
 
 
 > [!NOTE]
-> 基本的に[bbox_to_tf.launch](/launch/bbox_to_tf.launch)を修正するのではなく，このパッケージに依存しているパッケージのlaunchファイルにincludeで呼び出すようにして，競合をさけてください．
+> Basically, instead of modifying [bbox_to_tf.launch](/launch/bbox_to_tf.launch), please avoid conflicts by using include in the launch file of packages that depend on this package.
 
-<p align="right">(<a href="#readme-top">上に戻る</a>)</p>
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 ### Services
-run_ctrとしてTF化するかしないかのON/OFF(True/False)を切り替えることができます．
-基本的に，競合しないようにnode_nameに依存した命名となる．
+The function can be turned ON/OFF(True/False) as run_ctr.
+The naming is dependent on the node_name so that Topic names do not conflict.
 - ON/OFF切り替え
   ```sh
   node_name + "/run_ctr" (Service: sobits_msgs/RunCtrl)
   ```
 
 ### Topic
-TF化する他に，base_frame_nameから見た座標や各物体にかかる点群をPublishしています．
-基本的に，競合しないようにnode_nameに依存した命名となる．
-- 座標
+Coordinates and point clouds viewed from base_frame_name are Publish.
+The naming is dependent on the node_name so that Topic names do not conflict.
+- coordinate of objects
   ```sh
   node_name + "/object_poses" (Topic: sobits_msgs::ObjectPoseArray)
   ```
 
-- 点群
+- point cloud of objects
   ```sh
   node_name + "/object_poses" (Topic: pcl/PointCloud(pcl/PointXYZ))
   ```
 
- <p align="right">(<a href="#readme-top">上に戻る</a>)</p>
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 <!-- マイルストーン -->
-## マイルストーン
+## Milestone
 
-現時点のバッグや新規機能の依頼を確認するために[Issueページ](issues-url) をご覧ください．
+See the [open issues](issues-url) for a full list of proposed features (and known issues).
 
 
 <!-- 参考文献 -->
-## 参考文献
+## Acknowledgements
 
 * [ROS Noetic](http://wiki.ros.org/noetic)
 
@@ -197,7 +198,7 @@ TF化する他に，base_frame_nameから見た座標や各物体にかかる点
 [license-shield]: https://img.shields.io/github/license/TeamSOBITS/bbox_to_tf.svg?style=for-the-badge
 [license-url]: LICENSE
 
-<p align="right">(<a href="#readme-top">上に戻る</a>)</p>
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 <!-- MARKDOWN LINKS & IMAGES -->
