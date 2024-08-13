@@ -13,11 +13,11 @@ find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
-find_package(cv_bridge REQUIRED)
+# find_package(cv_bridge REQUIRED)
 find_package(pcl_ros REQUIRED)
 find_package(pcl_conversions REQUIRED)
-find_package(PCL REQUIRED)
-find_package(OpenCV REQUIRED)
+# find_package(PCL REQUIRED)
+# find_package(OpenCV REQUIRED)
 find_package(sobits_msgs REQUIRED)
 
 add_executable(bbox_to_tf src/bbox_to_tf.cpp)
@@ -28,11 +28,11 @@ ament_target_dependencies(bbox_to_tf
   std_msgs 
   tf2 
   tf2_ros 
-  cv_bridge 
+  # cv_bridge 
   pcl_ros
   pcl_conversions
-  PCL
-  OpenCV
+  # PCL
+  # OpenCV
   sobits_msgs
 )
 
