@@ -38,6 +38,7 @@ class BboxToTF {
         tf2_ros::TransformListener    tfListener_;
         tf2_ros::TransformBroadcaster tfBroadcaster_;
         
+        std::string                   node_name_;
         std::string                   base_frame_name_;
         std::string                   bbox_topic_name_;
         std::string                   cloud_topic_name_;
