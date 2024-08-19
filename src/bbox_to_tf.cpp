@@ -1,19 +1,16 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
-//  geometry_msgs::msg::PointStamped
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/msg/image.hpp>
-// #include <cv_bridge/cv_bridge.h>
 #include <pcl/common/common.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/transforms.hpp>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-// #include <pcl/VoxelGrid.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
@@ -45,21 +42,17 @@ class BboxToTF {
         std::string                   bbox_topic_name_;
         std::string                   cloud_topic_name_;
         std::string                   img_topic_name_;
-        // cv_bridge::CvImagePtr cv_ptr_;
-        // cv::Mat img_raw_;
 
         double                        cluster_tolerance;
         int                           min_clusterSize;
         int                           max_clusterSize;
         double                        noise_point_cloud_range;
         bool                          execute_flag_;
-        // bool                          is_error_;
 
         PointCloud::Ptr cloud_transform;
 
         rclcpp::Publisher<sobits_msgs::msg::ObjectPoseArray>::SharedPtr pub_obj_poses_;
         rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_object_cloud_;
-        // rclcpp::Publisher<PointCloud>::SharedPtr pub_object_cloud_;
 
         rclcpp::Service<sobits_msgs::srv::RunCtrl>::SharedPtr run_ctr_srv_;
 
@@ -71,7 +64,6 @@ class BboxToTF {
 
         pcl::search::KdTree<PointT>::Ptr        kdtree_;
         pcl::EuclideanClusterExtraction<PointT> euclid_clustering_;
-        // pcl::VoxelGrid<PointT>                  voxel_;
 
         void callback_BBoxCloud(const std::shared_ptr<sobits_msgs::msg::BoundingBoxes> bbox_msg,
                                 const std::shared_ptr<sensor_msgs::msg::PointCloud2>   cloud_msg,
@@ -232,9 +224,6 @@ class BboxToTF {
             execute_flag_ = req->request;
             res->response = true;
         }
-        double euclidean_distance(PointT p1, PointT p2) {
-            return (std::sqrt(std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2) + std::pow(p1.z - p2.z, 2)));
-        }
         bool checkNanInf(PointT pt) {
             if (std::isnan(pt.x) || std::isnan(pt.y) || std::isnan(pt.z)) return false;
             else if (std::isinf(pt.x) || std::isinf(pt.y) || std::isinf(pt.z)) return false;
@@ -242,6 +231,7 @@ class BboxToTF {
         }
     public:
         BboxToTF(std::shared_ptr<rclcpp::Node> nd) : nd_(nd), tfBuffer_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME)), tfListener_(tfBuffer_), tfBroadcaster_(nd_) {
+            nd_->declare_parameter("node_name", "bbox_to_tf");
             nd_->declare_parameter("base_frame_name", "base_footprint");
             nd_->declare_parameter("bbox_topic_name", "objects_rect");
             nd_->declare_parameter("cloud_topic_name", "/points2");
@@ -254,6 +244,7 @@ class BboxToTF {
             nd_->declare_parameter("noise_point_cloud_range", 0.01);
 
 
+            node_name_ = nd_->get_parameter("node_name").as_string();
             base_frame_name_ = nd_->get_parameter("base_frame_name").as_string();
             bbox_topic_name_ = nd_->get_parameter("bbox_topic_name").as_string();
             cloud_topic_name_ = nd_->get_parameter("cloud_topic_name").as_string();
@@ -273,12 +264,10 @@ class BboxToTF {
             euclid_clustering_.setMaxClusterSize(max_clusterSize);
             euclid_clustering_.setSearchMethod(kdtree_);
 
-            pub_obj_poses_ = nd_->create_publisher<sobits_msgs::msg::ObjectPoseArray>("object_poses", 10);
-            pub_object_cloud_ = nd_->create_publisher<sensor_msgs::msg::PointCloud2>("object_cloud", 1);
-            // pub_object_cloud_ = nd_->create_publisher<PointCloud>("object_cloud", 1);
+            pub_obj_poses_ = nd_->create_publisher<sobits_msgs::msg::ObjectPoseArray>(node_name_ + "/object_poses", 10);
+            pub_object_cloud_ = nd_->create_publisher<sensor_msgs::msg::PointCloud2>(node_name_ + "/object_cloud", 1);
 
-            run_ctr_srv_ = nd_->create_service<sobits_msgs::srv::RunCtrl>("run_ctr", std::bind(&BboxToTF::callback_RunCtr, this, std::placeholders::_1, std::placeholders::_2));
-
+            run_ctr_srv_ = nd_->create_service<sobits_msgs::srv::RunCtrl>(node_name_ + "/run_ctr", std::bind(&BboxToTF::callback_RunCtr, this, std::placeholders::_1, std::placeholders::_2));
 
             sub_bboxes_ = std::make_shared<message_filters::Subscriber<sobits_msgs::msg::BoundingBoxes>>(nd_, bbox_topic_name_);
             sub_cloud_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(nd_, cloud_topic_name_);
