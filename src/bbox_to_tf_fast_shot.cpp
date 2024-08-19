@@ -58,7 +58,7 @@ class BboxToTF {
         PointCloud::Ptr cloud_transform;
 
         rclcpp::Publisher<sobits_msgs::msg::ObjectPoseArray>::SharedPtr pub_obj_poses_;
-        rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_object_cloud_;
+        // rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_object_cloud_;
         // rclcpp::Publisher<PointCloud>::SharedPtr pub_object_cloud_;
 
         rclcpp::Service<sobits_msgs::srv::RunCtrl>::SharedPtr run_ctr_srv_;
@@ -100,108 +100,21 @@ class BboxToTF {
                 object_pose_array.header = bbox_msg->header;
 
                 for (size_t i=0; i<bbox_msg->bounding_boxes.size(); i++) {
-                    PointCloud::Ptr cloud_bbox_xyz(new PointCloud());
-                    sensor_msgs::msg::PointCloud2 cloud_bbox;
                     const sobits_msgs::msg::BoundingBox& bbox = bbox_msg->bounding_boxes[i];
-                    if ((((int)(img_msg->width) * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)) < 0) || ((int)(cloud_transform->points.size()) <= ((int)(img_msg->width) * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)))) continue;
-                    if (!checkNanInf(cloud_transform->points[(int)(img_msg->width) * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)])) continue;
-                    cloud_bbox_xyz->points.push_back(cloud_transform->points[(int)(img_msg->width) * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2)]);
-                    cloud_bbox_xyz->header.frame_id = base_frame_name_;
-                    if ((0 <= ((int)(img_msg->width) * (int)((bbox.ymax + bbox.ymin)/2) + (int)((bbox.xmax + bbox.xmin)/2))) && (((int)(img_msg->width) * (int)((bbox.ymax + bbox.ymin)/2) + (int)((bbox.xmax + bbox.xmin)/2)) < (int)(cloud_transform->points.size()))) {
-                        if (checkNanInf(cloud_transform->points[(int)(img_msg->width) * (int)((bbox.ymax + bbox.ymin)/2) + (int)((bbox.xmax + bbox.xmin)/2)])) cloud_bbox_xyz->points.push_back(cloud_transform->points[(int)(img_msg->width) * (int)((bbox.ymax + bbox.ymin)/2) + (int)((bbox.xmax + bbox.xmin)/2)]);
-                    }
-                    for (int iy = 0; iy <= (int)((bbox.ymax - bbox.ymin)/2); iy++) {
-                        for (int ix = 0; ix <= (int)((bbox.xmax - bbox.xmin)/2); ix++) {
-                            if ((ix == 0) && (iy == 0)) continue;
-                            long index;
-                            index = (int)(img_msg->width) * ((int)((bbox.ymax + bbox.ymin)/2) - iy) + (int)((bbox.xmax + bbox.xmin)/2) - ix;
-                            if ((0 <= index) && (index < (int)(cloud_transform->points.size()))) {
-                                if (checkNanInf(cloud_transform->points[index])) cloud_bbox_xyz->points.push_back(cloud_transform->points[index]);
-                            }
-                            if (iy != 0) {
-                                index = (int)(img_msg->width) * ((int)((bbox.ymax + bbox.ymin)/2) + iy) + (int)((bbox.xmax + bbox.xmin)/2) - ix;
-                                if ((0 <= index) && (index < (int)(cloud_transform->points.size()))) {
-                                    if (checkNanInf(cloud_transform->points[index])) cloud_bbox_xyz->points.push_back(cloud_transform->points[index]);
-                                }
-                            }
-                            if (ix != 0) {
-                                index = (int)(img_msg->width) * ((int)((bbox.ymax + bbox.ymin)/2) - iy) + (int)((bbox.xmax + bbox.xmin)/2) + ix;
-                                if ((0 <= index) && (index < (int)(cloud_transform->points.size()))) {
-                                    if (checkNanInf(cloud_transform->points[index])) cloud_bbox_xyz->points.push_back(cloud_transform->points[index]);
-                                }
-                                if (iy != 0) {
-                                    index = (int)(img_msg->width) * ((int)((bbox.ymax + bbox.ymin)/2) + iy) + (int)((bbox.xmax + bbox.xmin)/2) + ix;
-                                    if ((0 <= index) && (index < (int)(cloud_transform->points.size()))) {
-                                        if (checkNanInf(cloud_transform->points[index])) cloud_bbox_xyz->points.push_back(cloud_transform->points[index]);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    geometry_msgs::msg::Point pt;
+                    long pcl_index = (int)(img_msg->width) * ((int)((bbox.ymax + bbox.ymin)/2)) + (int)((bbox.xmax + bbox.xmin)/2);
+                    if ((pcl_index < 0) || ((int)(cloud_transform->points.size()) <= pcl_index)) continue;
+                    if (!checkNanInf(cloud_transform->points[pcl_index])) continue;
+                    pt.x = cloud_transform->points[pcl_index].x;
+                    pt.y = cloud_transform->points[pcl_index].y;
+                    pt.z = cloud_transform->points[pcl_index].z;
 
-                    kdtree_->setInputCloud(cloud_bbox_xyz);
-                    euclid_clustering_.setInputCloud(cloud_bbox_xyz);
-                    std::vector<pcl::PointIndices> cluster_indices;
-                    euclid_clustering_.extract(cluster_indices);
-                    if (cluster_indices.size() == 0) continue;
-
-                    Eigen::Vector4f  min_pt, max_pt;
-                    double           distance = std::numeric_limits<double>::max();
-
-                    if (cloud_transform->points.size() == 0) {
-                        if (!checkNanInf(cloud_transform->points[0])) continue;
-                    }
-                    for (std::vector<pcl::PointIndices>::const_iterator it     = cluster_indices.begin(),
-                                                                        it_end = cluster_indices.end();
-                                                                        it != it_end;
-                                                                        it++) {
-                        Eigen::Vector4f tmp_min_pt, tmp_max_pt;
-                        pcl::getMinMax3D(*cloud_bbox_xyz, *it, tmp_min_pt, tmp_max_pt);
-                        double tmp_dis = std::sqrt(std::pow(((tmp_min_pt.x() + tmp_max_pt.x()) / 2.) - cloud_bbox_xyz->points[0].x, 2)
-                                                    + std::pow(((tmp_min_pt.y() + tmp_max_pt.y()) / 2.) - cloud_bbox_xyz->points[0].y, 2)
-                                                    + std::pow(((tmp_min_pt.y() + tmp_max_pt.y()) / 2.) - cloud_bbox_xyz->points[0].z, 2));
-                        
-                        if (distance > tmp_dis) {
-                            distance = tmp_dis;
-                            max_pt   = tmp_max_pt;
-                            min_pt   = tmp_min_pt;
-                        }
-                    }
-
-                    pcl::PassThrough<PointT> pass;
-                    pass.setFilterFieldName("x");
-                    if ((max_pt.x() - noise_point_cloud_range) > min_pt.x()) pass.setFilterLimits(min_pt.x(), max_pt.x() - noise_point_cloud_range);
-                    else pass.setFilterLimits(min_pt.x(), max_pt.x());
-                    pass.setInputCloud(cloud_bbox_xyz);
-                    pass.filter(*cloud_bbox_xyz);
-
-                    pass.setFilterFieldName("y");
-                    if ((max_pt.y() - noise_point_cloud_range) > (min_pt.y() + noise_point_cloud_range)) pass.setFilterLimits(min_pt.y() + noise_point_cloud_range, max_pt.y() - noise_point_cloud_range);
-                    else pass.setFilterLimits(min_pt.y(), max_pt.y());
-                    pass.setInputCloud(cloud_bbox_xyz);
-                    pass.filter(*cloud_bbox_xyz);
-
-                    pass.setFilterFieldName("z");
-                    if (max_pt.z() > (min_pt.z() + noise_point_cloud_range)) pass.setFilterLimits(min_pt.z() + noise_point_cloud_range, max_pt.z());
-                    else pass.setFilterLimits(min_pt.z(), max_pt.z());
-                    pass.setInputCloud(cloud_bbox_xyz);
-                    pass.filter(*cloud_bbox_xyz);
-
-                    Eigen::Vector4f xyz_centroid;
-                    pcl::compute3DCentroid(*cloud_bbox_xyz, xyz_centroid);
-                    
-                    geometry_msgs::msg::PointStamped object_pt;
-                    object_pt.header.frame_id = base_frame_name_;
-                    object_pt.header.stamp    = nd_->now();
-                    object_pt.point.x         = xyz_centroid.x();
-                    object_pt.point.y         = xyz_centroid.y();
-                    object_pt.point.y         = xyz_centroid.z();
                     sobits_msgs::msg::ObjectPose object_pose;
                     object_pose.class_name         = bbox.class_name;
                     object_pose.detect_id          = i;
-                    object_pose.pose.position.x    = xyz_centroid.x();
-                    object_pose.pose.position.y    = xyz_centroid.y();
-                    object_pose.pose.position.z    = xyz_centroid.z();
+                    object_pose.pose.position.x    = pt.x;
+                    object_pose.pose.position.y    = pt.y;
+                    object_pose.pose.position.z    = pt.z;
                     object_pose.pose.orientation.x = 0.0;
                     object_pose.pose.orientation.y = 0.0;
                     object_pose.pose.orientation.z = 0.0;
@@ -211,9 +124,9 @@ class BboxToTF {
                     transformStampedObj.header.frame_id = base_frame_name_;
                     transformStampedObj.child_frame_id = bbox.class_name;
                     transformStampedObj.header.stamp = nd_->now();
-                    transformStampedObj.transform.translation.x = xyz_centroid.x();
-                    transformStampedObj.transform.translation.y = xyz_centroid.y();
-                    transformStampedObj.transform.translation.z = xyz_centroid.z();
+                    transformStampedObj.transform.translation.x = pt.x;
+                    transformStampedObj.transform.translation.y = pt.y;
+                    transformStampedObj.transform.translation.z = pt.z;
                     transformStampedObj.transform.rotation.x = 0.0;
                     transformStampedObj.transform.rotation.y = 0.0;
                     transformStampedObj.transform.rotation.z = 0.0;
@@ -221,9 +134,6 @@ class BboxToTF {
 
                     object_pose_array.object_poses.push_back(object_pose);
                     tfBroadcaster_.sendTransform(transformStampedObj);
-
-                    pcl::toROSMsg(*cloud_bbox_xyz, cloud_bbox);
-                    pub_object_cloud_->publish(cloud_bbox);
                 }
                 pub_obj_poses_->publish(object_pose_array);
             }
@@ -231,9 +141,6 @@ class BboxToTF {
         void callback_RunCtr(const std::shared_ptr<sobits_msgs::srv::RunCtrl::Request> req, std::shared_ptr<sobits_msgs::srv::RunCtrl::Response> res) {
             execute_flag_ = req->request;
             res->response = true;
-        }
-        double euclidean_distance(PointT p1, PointT p2) {
-            return (std::sqrt(std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2) + std::pow(p1.z - p2.z, 2)));
         }
         bool checkNanInf(PointT pt) {
             if (std::isnan(pt.x) || std::isnan(pt.y) || std::isnan(pt.z)) return false;
@@ -274,7 +181,7 @@ class BboxToTF {
             euclid_clustering_.setSearchMethod(kdtree_);
 
             pub_obj_poses_ = nd_->create_publisher<sobits_msgs::msg::ObjectPoseArray>("object_poses", 10);
-            pub_object_cloud_ = nd_->create_publisher<sensor_msgs::msg::PointCloud2>("object_cloud", 1);
+            // pub_object_cloud_ = nd_->create_publisher<sensor_msgs::msg::PointCloud2>("object_cloud", 1);
             // pub_object_cloud_ = nd_->create_publisher<PointCloud>("object_cloud", 1);
 
             run_ctr_srv_ = nd_->create_service<sobits_msgs::srv::RunCtrl>("run_ctr", std::bind(&BboxToTF::callback_RunCtr, this, std::placeholders::_1, std::placeholders::_2));
