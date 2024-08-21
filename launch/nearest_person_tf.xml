@@ -1,6 +1,6 @@
 <launch>
     <!-- node_name -->
-    <arg name="node_name"                default="bbox_to_tf_fast_shot_follower"/>
+    <arg name="node_name"                default="nearest_person_tf"/>
 
     <!-- base_frame_name -->
     <arg name="base_frame_name"          default="camera_link"/>
@@ -32,7 +32,7 @@
     <!-- limiter of object point cloud cut noise -->
     <arg name="noise_point_cloud_range"          default="0.01"/>
 
-    <node pkg="bbox_to_tf" exec="bbox_to_tf_fast_shot_follower" name="$(var node_name)" output="screen">
+    <node pkg="bbox_to_tf" exec="nearest_person_tf" name="$(var node_name)" output="screen">
         <param name="node_name"                value="$(var node_name)" />
         <param name="base_frame_name"          value="$(var base_frame_name)" />
         <param name="bbox_topic_name"          value="$(var bbox_topic_name)" />

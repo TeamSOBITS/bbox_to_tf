@@ -89,11 +89,10 @@ class BboxToTF {
                     RCLCPP_ERROR(nd_->get_logger(), "[BBox To TF] transformPointCloud() failed. PointCloud could not be transformed");
                     return;
                 }
-                sobits_msgs::msg::ObjectPose nearest_person_pose;
 
                 float min_distance = 1000000.0;
                 geometry_msgs::msg::TransformStamped transformStampedObj;
-                sobits_msgs::msg::ObjectPose object_pose;
+                sobits_msgs::msg::ObjectPose nearest_person_pose;
 
                 for (size_t i=0; i<bbox_msg->bounding_boxes.size(); i++) {
                     const sobits_msgs::msg::BoundingBox& bbox = bbox_msg->bounding_boxes[i];
@@ -117,15 +116,15 @@ class BboxToTF {
                     if (person_distance < min_distance) {
                         min_distance = person_distance;
 
-                        object_pose.class_name         = bbox.class_name;
-                        object_pose.detect_id          = i;
-                        object_pose.pose.position.x    = pt.x;
-                        object_pose.pose.position.y    = pt.y;
-                        object_pose.pose.position.z    = pt.z;
-                        object_pose.pose.orientation.x = 0.0;
-                        object_pose.pose.orientation.y = 0.0;
-                        object_pose.pose.orientation.z = 0.0;
-                        object_pose.pose.orientation.w = 1.0;
+                        nearest_person_pose.class_name         = bbox.class_name;
+                        nearest_person_pose.detect_id          = i;
+                        nearest_person_pose.pose.position.x    = pt.x;
+                        nearest_person_pose.pose.position.y    = pt.y;
+                        nearest_person_pose.pose.position.z    = pt.z;
+                        nearest_person_pose.pose.orientation.x = 0.0;
+                        nearest_person_pose.pose.orientation.y = 0.0;
+                        nearest_person_pose.pose.orientation.z = 0.0;
+                        nearest_person_pose.pose.orientation.w = 1.0;
 
                         transformStampedObj.header.frame_id = base_frame_name_;
                         transformStampedObj.child_frame_id = bbox.class_name;
@@ -189,7 +188,7 @@ class BboxToTF {
             euclid_clustering_.setMaxClusterSize(max_clusterSize);
             euclid_clustering_.setSearchMethod(kdtree_);
 
-            pub_nearest_person_pose_ = nd_->create_publisher<sobits_msgs::msg::ObjectPose>(node_name_ + "/object_poses", 10);
+            pub_nearest_person_pose_ = nd_->create_publisher<sobits_msgs::msg::ObjectPose>(node_name_ + "/nearest_person_pose", 10);
 
             run_ctr_srv_ = nd_->create_service<sobits_msgs::srv::RunCtrl>(node_name_ + "/run_ctr", std::bind(&BboxToTF::callback_RunCtr, this, std::placeholders::_1, std::placeholders::_2));
 
