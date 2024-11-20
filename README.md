@@ -37,7 +37,7 @@
 <!-- [![Product Name Screen Shot][product-screenshot]](https://example.com) -->
 
 画像認識によって検出をしたBoundingBoxを元に点群を重ね合わせることで3次元座標(TF)化するパッケージです．\
-基本的にRGB-Dカメラによって検出したBoundingBox(sobits_msgs/BoundingBoxes)と，その画像(sensor_msgs/Image)，そのカメラの点群(sensor_msgs/PointCloud2)を用いて3次元化します．
+基本的にRGB-Dカメラによって検出したBoundingBox(sobits_interfaces/BoundingBoxes)と，その画像(sensor_msgs/Image)，そのカメラの点群(sensor_msgs/PointCloud2)を用いて3次元化します．
 
 > [!NOTE]
 > このパッケージは基本的に画像処理・物体認識をしたあとに使うものなので，そのパッケージのinstall.shによってインストールされます．
@@ -105,7 +105,7 @@
 
 - bbox_topic_name\
   bbox_topic_nameはBoundingBoxのトピック名です．
-  具体的には，sobits_msgs/BoundingBoxes型のメッセージが飛んでいるトピック名を指定する．\
+  具体的には，sobits_interfaces/BoundingBoxes型のメッセージが飛んでいるトピック名を指定する．\
   これはSOBITSが独自に作ったカスタムROSメッセージであるためsobits_msgsをgit cloneしてある必用があります．\
   しかし，このパッケージに依存しているパッケージのinstall.shで既にgit cloneされているはずです．
 
@@ -155,7 +155,7 @@ run_ctrとしてTF化するかしないかのON/OFF(True/False)を切り替え�
 基本的に，競合しないようにnode_nameに依存した命名となる．
 - ON/OFF切り替え
   ```sh
-  node_name + "/run_ctr" (Service: sobits_msgs/RunCtrl)
+  node_name + "/run_ctr" (Service: sobits_interfaces/RunCtrl)
   ```
 
 ### Topic
@@ -163,7 +163,7 @@ TF化する他に，base_frame_nameから見た座標や各物体にかかる点
 基本的に，競合しないようにnode_nameに依存した命名となる．
 - 座標
   ```sh
-  node_name + "/object_poses" (Topic: sobits_msgs::ObjectPoseArray)
+  node_name + "/object_poses" (Topic: sobits_interfaces::ObjectPoseArray)
   ```
 
 - 点群

@@ -37,7 +37,7 @@
 <!-- [![Product Name Screen Shot][product-screenshot]](https://example.com) -->
 
 This package converts the BoundingBox detected by image recognition into 3D coordinates (TF) using a point cloud.\
-Basically, the BoundingBoxes detected by the RGB-D camera (sobits_msgs/BoundingBoxes), their images (sensor_msgs/Image), and the point clouds from that camera (sensor_msgs/PointCloud2) are used for 3D.
+Basically, the BoundingBoxes detected by the RGB-D camera (sobits_interfaces/BoundingBoxes), their images (sensor_msgs/Image), and the point clouds from that camera (sensor_msgs/PointCloud2) are used for 3D.
 
 > [!NOTE]
 > This package is basically used after image processing and object recognition, so it is installed by other packages.
@@ -105,7 +105,7 @@ Therefore, this section describes the contents and structure of [bbox_to_tf.laun
 
 - bbox_topic_name\
   bbox_topic_name is the name of the BoundingBox topic.
-  Specifically, it specifies the name of the topic on which messages of type sobits_msgs/BoundingBoxes are flying.\
+  Specifically, it specifies the name of the topic on which messages of type sobits_interfaces/BoundingBoxes are flying.\
   This is a custom ROS message created by SOBITS on its own, so it is necessary to have sobits_msgs git clone.\
   However, it should already be git cloned in the install.sh of the packages that depend on this package.
 
@@ -155,7 +155,7 @@ The function can be turned ON/OFF(True/False) as run_ctr.
 The naming is dependent on the node_name so that Topic names do not conflict.
 - ON/OFF
   ```sh
-  node_name + "/run_ctr" (Service: sobits_msgs/RunCtrl)
+  node_name + "/run_ctr" (Service: sobits_interfaces/RunCtrl)
   ```
 
 ### Topic
@@ -163,7 +163,7 @@ Coordinates and point clouds viewed from base_frame_name are Publish.
 The naming is dependent on the node_name so that Topic names do not conflict.
 - coordinate of objects
   ```sh
-  node_name + "/object_poses" (Topic: sobits_msgs::ObjectPoseArray)
+  node_name + "/object_poses" (Topic: sobits_interfaces::ObjectPoseArray)
   ```
 
 - point cloud of objects

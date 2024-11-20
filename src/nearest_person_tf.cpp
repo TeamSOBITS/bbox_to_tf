@@ -18,16 +18,16 @@
 #include <message_filters/sync_policies/approximate_time.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/time_synchronizer.h>
-#include "sobits_msgs/msg/bounding_boxes.hpp"
-#include "sobits_msgs/msg/object_pose.hpp"
-#include "sobits_msgs/srv/run_ctrl.hpp"
+#include "sobits_interfaces/msg/bounding_boxes.hpp"
+#include "sobits_interfaces/msg/object_pose.hpp"
+#include "sobits_interfaces/srv/run_ctrl.hpp"
 
 #include <iostream>
 #include <unordered_map>
 
 typedef pcl::PointXYZ PointT;
 typedef pcl::PointCloud<PointT> PointCloud;
-typedef message_filters::sync_policies::ApproximateTime<sobits_msgs::msg::BoundingBoxes, sensor_msgs::msg::PointCloud2, sensor_msgs::msg::Image> BBoxesCloudSyncPolicy;
+typedef message_filters::sync_policies::ApproximateTime<sobits_interfaces::msg::BoundingBoxes, sensor_msgs::msg::PointCloud2, sensor_msgs::msg::Image> BBoxesCloudSyncPolicy;
 
 class BboxToTF {
     private:
@@ -52,11 +52,11 @@ class BboxToTF {
 
         PointCloud::Ptr cloud_transform;
 
-        rclcpp::Publisher<sobits_msgs::msg::ObjectPose>::SharedPtr pub_nearest_person_pose_;
+        rclcpp::Publisher<sobits_interfaces::msg::ObjectPose>::SharedPtr pub_nearest_person_pose_;
 
-        rclcpp::Service<sobits_msgs::srv::RunCtrl>::SharedPtr run_ctr_srv_;
+        rclcpp::Service<sobits_interfaces::srv::RunCtrl>::SharedPtr run_ctr_srv_;
 
-        std::shared_ptr<message_filters::Subscriber<sobits_msgs::msg::BoundingBoxes>> sub_bboxes_;
+        std::shared_ptr<message_filters::Subscriber<sobits_interfaces::msg::BoundingBoxes>> sub_bboxes_;
         std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>   sub_cloud_;
         std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::Image>>         sub_img_;
 
@@ -65,7 +65,7 @@ class BboxToTF {
         pcl::search::KdTree<PointT>::Ptr        kdtree_;
         pcl::EuclideanClusterExtraction<PointT> euclid_clustering_;
 
-        void callback_BBoxCloud(const std::shared_ptr<sobits_msgs::msg::BoundingBoxes> bbox_msg,
+        void callback_BBoxCloud(const std::shared_ptr<sobits_interfaces::msg::BoundingBoxes> bbox_msg,
                                 const std::shared_ptr<sensor_msgs::msg::PointCloud2>   cloud_msg,
                                 const std::shared_ptr<sensor_msgs::msg::Image>         img_msg ) {
             if (!execute_flag_) {
@@ -92,10 +92,10 @@ class BboxToTF {
 
                 float min_distance = 1000000.0;
                 geometry_msgs::msg::TransformStamped transformStampedObj;
-                sobits_msgs::msg::ObjectPose nearest_person_pose;
+                sobits_interfaces::msg::ObjectPose nearest_person_pose;
 
                 for (size_t i=0; i<bbox_msg->bounding_boxes.size(); i++) {
-                    const sobits_msgs::msg::BoundingBox& bbox = bbox_msg->bounding_boxes[i];
+                    const sobits_interfaces::msg::BoundingBox& bbox = bbox_msg->bounding_boxes[i];
 
                     if (only_specific_object_) {
                         if (bbox.class_name != "person") {
@@ -142,7 +142,7 @@ class BboxToTF {
                 pub_nearest_person_pose_->publish(nearest_person_pose);
             }
         }
-        void callback_RunCtr(const std::shared_ptr<sobits_msgs::srv::RunCtrl::Request> req, std::shared_ptr<sobits_msgs::srv::RunCtrl::Response> res) {
+        void callback_RunCtr(const std::shared_ptr<sobits_interfaces::srv::RunCtrl::Request> req, std::shared_ptr<sobits_interfaces::srv::RunCtrl::Response> res) {
             execute_flag_ = req->request;
             res->response = true;
         }
@@ -188,11 +188,11 @@ class BboxToTF {
             euclid_clustering_.setMaxClusterSize(max_clusterSize);
             euclid_clustering_.setSearchMethod(kdtree_);
 
-            pub_nearest_person_pose_ = nd_->create_publisher<sobits_msgs::msg::ObjectPose>(node_name_ + "/nearest_person_pose", 10);
+            pub_nearest_person_pose_ = nd_->create_publisher<sobits_interfaces::msg::ObjectPose>(node_name_ + "/nearest_person_pose", 10);
 
-            run_ctr_srv_ = nd_->create_service<sobits_msgs::srv::RunCtrl>(node_name_ + "/run_ctr", std::bind(&BboxToTF::callback_RunCtr, this, std::placeholders::_1, std::placeholders::_2));
+            run_ctr_srv_ = nd_->create_service<sobits_interfaces::srv::RunCtrl>(node_name_ + "/run_ctr", std::bind(&BboxToTF::callback_RunCtr, this, std::placeholders::_1, std::placeholders::_2));
 
-            sub_bboxes_ = std::make_shared<message_filters::Subscriber<sobits_msgs::msg::BoundingBoxes>>(nd_, bbox_topic_name_);
+            sub_bboxes_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::BoundingBoxes>>(nd_, bbox_topic_name_);
             sub_cloud_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(nd_, cloud_topic_name_);
             sub_img_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(nd_, img_topic_name_);
             sync_ = std::make_shared<message_filters::Synchronizer<BBoxesCloudSyncPolicy>>(BBoxesCloudSyncPolicy(200), *sub_bboxes_, *sub_cloud_, *sub_img_);
