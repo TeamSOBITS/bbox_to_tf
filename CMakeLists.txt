@@ -24,15 +24,15 @@ find_package(vision_msgs REQUIRED)
 include_directories(include)
 add_executable(bbox_to_tf src/bbox_to_tf.cpp)
 ament_target_dependencies(bbox_to_tf rclcpp std_msgs std_srvs geometry_msgs sensor_msgs pcl_conversions pcl_ros tf2_ros vision_msgs)
-add_executable(bbox_to_tf_fast_shot src/bbox_to_tf_fast_shot.cpp)
-ament_target_dependencies(bbox_to_tf_fast_shot rclcpp std_msgs geometry_msgs sensor_msgs pcl_conversions pcl_ros tf2_ros sobits_interfaces)
-add_executable(nearest_person_tf src/nearest_person_tf.cpp)
-ament_target_dependencies(nearest_person_tf rclcpp std_msgs geometry_msgs sensor_msgs pcl_conversions pcl_ros tf2_ros sobits_interfaces)
+# add_executable(bbox_to_tf_fast_shot src/bbox_to_tf_fast_shot.cpp)
+# ament_target_dependencies(bbox_to_tf_fast_shot rclcpp std_msgs geometry_msgs sensor_msgs pcl_conversions pcl_ros tf2_ros sobits_interfaces)
+# add_executable(nearest_person_tf src/nearest_person_tf.cpp)
+# ament_target_dependencies(nearest_person_tf rclcpp std_msgs geometry_msgs sensor_msgs pcl_conversions pcl_ros tf2_ros sobits_interfaces)
 
 install(TARGETS
   bbox_to_tf
-  bbox_to_tf_fast_shot
-  nearest_person_tf
+  # bbox_to_tf_fast_shot
+  # nearest_person_tf
   DESTINATION lib/${PROJECT_NAME}
 )
 #--- end C++
