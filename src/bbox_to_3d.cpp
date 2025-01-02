@@ -111,23 +111,23 @@ class BboxTo3D : public rclcpp::Node {
                         int dy = iy * std::cos(bbox.bbox.center.theta) + ix * std::sin(bbox.bbox.center.theta);
                         if ((ix == 0) && (iy == 0)) continue;
                         long index;
-                        index = (int)(img_msg->width) * ((int)(bbox.bbox.size_y/2) - dy) + (int)(bbox.bbox.size_x/2) - dx;
+                        index = (int)(img_msg->width) * ((int)(bbox.bbox.center.position.y) - dy) + (int)(bbox.bbox.center.position.x) - dx;
                         if ((0 <= index) && (index < (int)(cloud_transformed_->points.size()))) {
                             if (checkNanInf(cloud_transformed_->points[index])) cloud_bbox_xyz->points.push_back(cloud_transformed_->points[index]);
                         }
                         if (iy != 0) {
-                            index = (int)(img_msg->width) * ((int)(bbox.bbox.size_y/2) + dy) + (int)(bbox.bbox.size_x/2) - dx;
+                            index = (int)(img_msg->width) * ((int)(bbox.bbox.center.position.y) + dy) + (int)(bbox.bbox.center.position.x) - dx;
                             if ((0 <= index) && (index < (int)(cloud_transformed_->points.size()))) {
                                 if (checkNanInf(cloud_transformed_->points[index])) cloud_bbox_xyz->points.push_back(cloud_transformed_->points[index]);
                             }
                         }
                         if (ix != 0) {
-                            index = (int)(img_msg->width) * ((int)(bbox.bbox.size_y/2) - dy) + (int)(bbox.bbox.size_x/2) + dx;
+                            index = (int)(img_msg->width) * ((int)(bbox.bbox.center.position.y) - dy) + (int)(bbox.bbox.center.position.x) + dx;
                             if ((0 <= index) && (index < (int)(cloud_transformed_->points.size()))) {
                                 if (checkNanInf(cloud_transformed_->points[index])) cloud_bbox_xyz->points.push_back(cloud_transformed_->points[index]);
                             }
                             if (iy != 0) {
-                                index = (int)(img_msg->width) * ((int)(bbox.bbox.size_y/2) + dy) + (int)(bbox.bbox.size_x/2) + dx;
+                                index = (int)(img_msg->width) * ((int)(bbox.bbox.center.position.y) + dy) + (int)(bbox.bbox.center.position.x) + dx;
                                 if ((0 <= index) && (index < (int)(cloud_transformed_->points.size()))) {
                                     if (checkNanInf(cloud_transformed_->points[index])) cloud_bbox_xyz->points.push_back(cloud_transformed_->points[index]);
                                 }

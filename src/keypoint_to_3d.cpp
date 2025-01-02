@@ -106,7 +106,7 @@ class KeyTo3D : public rclcpp::Node {
                             geometry_msgs::msg::TransformStamped transformStamped;
                             transformStamped.header.stamp = pcl_msg->header.stamp;
                             transformStamped.header.frame_id = base_frame_name_;
-                            transformStamped.child_frame_id = pose_2d.key_names[key_num];
+                            transformStamped.child_frame_id = pose_2d.key_names[key_num] + "_" + std::to_string(human_id);
                             transformStamped.transform.translation.x = part_point.x;
                             transformStamped.transform.translation.y = part_point.y;
                             transformStamped.transform.translation.z = part_point.z;
