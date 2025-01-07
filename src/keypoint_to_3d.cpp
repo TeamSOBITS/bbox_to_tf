@@ -90,7 +90,7 @@ class KeyTo3D : public rclcpp::Node {
                     int point_x = (int)(pose_2d.key_points[key_num].x);
                     int point_y = (int)(pose_2d.key_points[key_num].y);
 
-                    long index = (int)(img_msg->width) * point_y + point_x;
+                    int index = (int)(img_msg->width) * point_y + point_x;
 
                     // Get the 3D Pose(x,y,z) from each 2D Pose(x,y) body part by refering to the Point Cloud
                     if ((0 <= point_x) && (0 <= point_y) && (0 <= index) && (index < (int)(cloud_transformed_->points.size()))) {
@@ -172,7 +172,7 @@ class KeyTo3D : public rclcpp::Node {
             pub_result_3d_array_ = this->create_publisher<sobits_interfaces::msg::KeyPointArray>("keypoint_3d_array", 5);
 
             // ROS service server
-            run_ctr_srv_ = this->create_service<std_srvs::srv::SetBool>("3d/run_ctr", std::bind(&KeyTo3D::callback_RunCtr, this, std::placeholders::_1, std::placeholders::_2));
+            run_ctr_srv_ = this->create_service<std_srvs::srv::SetBool>("position/run_ctr", std::bind(&KeyTo3D::callback_RunCtr, this, std::placeholders::_1, std::placeholders::_2));
 
             // Synchronize the 2D Key Point result and the Point Cloud
             if (this->get_parameter("execute_default").as_bool()) {

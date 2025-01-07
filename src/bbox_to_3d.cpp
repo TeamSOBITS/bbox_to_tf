@@ -296,7 +296,7 @@ class BboxTo3D : public rclcpp::Node {
             pub_object_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("object_3d_cloud", 1);
 
             // ROS service server
-            run_ctr_srv_ = this->create_service<std_srvs::srv::SetBool>("3d/run_ctr", std::bind(&BboxTo3D::callback_RunCtr, this, std::placeholders::_1, std::placeholders::_2));
+            run_ctr_srv_ = this->create_service<std_srvs::srv::SetBool>("position/run_ctr", std::bind(&BboxTo3D::callback_RunCtr, this, std::placeholders::_1, std::placeholders::_2));
 
             // Synchronize the bbox result and the Point Cloud
             if (this->get_parameter("execute_default").as_bool()) {
