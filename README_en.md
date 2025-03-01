@@ -171,6 +171,11 @@ The naming is dependent on the node_name so that Topic names do not conflict.
   node_name + "/object_poses" (Topic: pcl/PointCloud(pcl/PointXYZ))
   ```
 
+### Mode
+Create fast_shot Mode to reduce the amount of point clouds and obtain the coordinates of objects.
+When the amount of point clouds is large, such as a person, setting fast_shot Mode to true (ON) can reduce the processing time.
+By default, fast_shot Mode is false (OFF).
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 

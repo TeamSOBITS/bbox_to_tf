@@ -171,6 +171,11 @@ TF化する他に，base_frame_nameから見た座標や各物体にかかる点
   node_name + "/object_poses" (Topic: pcl/PointCloud(pcl/PointXYZ))
   ```
 
+### Mode
+点群量を減らして物体の座標を取得するfast_shot Modeを作成．
+人物といった点群量が多い物体の場合に，fast_shot Modeをtrue(ON)にして用いると処理時間の軽減が可能．
+defaultではfast_shot Modeはfalse(OFF)．
+
  <p align="right">(<a href="#readme-top">上に戻る</a>)</p>
 
 
