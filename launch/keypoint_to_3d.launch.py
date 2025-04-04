@@ -7,14 +7,14 @@ def generate_launch_description():
 
     namespace = LaunchConfiguration("namespace")
     namespace_cmd = DeclareLaunchArgument(
-        "namespace", default_value="namespace", description="Namespace for the nodes"
+        "namespace", default_value="", description="Namespace for the nodes"
     )
 
     base_frame_name = LaunchConfiguration("base_frame_name")
     base_frame_name_cmd = DeclareLaunchArgument(
         "base_frame_name",
         description="Base frame name for the node",
-        default_value="base_footprint",
+        default_value="camera_base",
     )
 
     keypoints_topic_name = LaunchConfiguration("keypoints_topic_name")

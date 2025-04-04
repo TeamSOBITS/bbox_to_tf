@@ -7,21 +7,21 @@ def generate_launch_description():
 
     namespace = LaunchConfiguration("namespace")
     namespace_cmd = DeclareLaunchArgument(
-        "namespace", default_value="namespace", description="Namespace for the nodes"
+        "namespace", default_value="", description="Namespace for the nodes"
     )
 
     base_frame_name = LaunchConfiguration("base_frame_name")
     base_frame_name_cmd = DeclareLaunchArgument(
         "base_frame_name",
         description="Base frame name for the node",
-        default_value="base_footprint",
+        default_value="camera_base",
     )
 
     bbox_topic_name = LaunchConfiguration("bbox_topic_name")
     bbox_topic_name_cmd = DeclareLaunchArgument(
         "bbox_topic_name",
         description="Bounding box topic name",
-        default_value="objects_rect",
+        default_value="/yolo_ros/object_boxes",
     )
 
     cloud_topic_name = LaunchConfiguration("cloud_topic_name")
