@@ -73,6 +73,13 @@ def generate_launch_description():
         default_value="0.01",
     )
 
+    fast_shot = LaunchConfiguration("fast_shot")
+    fast_shot_cmd = DeclareLaunchArgument(
+        "fast_shot",
+        description="Use fast shot processing",
+        default_value="true",
+    )
+
     bbox_to_3d_cmd = Node(
         package='image_to_position',
         executable='bbox_to_3d',
@@ -90,6 +97,7 @@ def generate_launch_description():
                 "min_clusterSize": min_cluster_size,
                 "max_clusterSize": max_cluster_size,
                 "noise_point_cloud_range": noise_point_cloud_range,
+                "fast_shot": fast_shot,
             }
         ]
     )
@@ -105,5 +113,6 @@ def generate_launch_description():
         min_cluster_size_cmd,
         max_cluster_size_cmd,
         noise_point_cloud_range_cmd,
+        fast_shot_cmd,
         bbox_to_3d_cmd,
     ])

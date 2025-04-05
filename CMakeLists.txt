@@ -26,13 +26,10 @@ ament_target_dependencies(bbox_to_3d rclcpp std_msgs std_srvs geometry_msgs sens
 add_executable(keypoint_to_3d src/keypoint_to_3d.cpp)
 ament_target_dependencies(keypoint_to_3d rclcpp std_msgs std_srvs geometry_msgs sensor_msgs pcl_conversions pcl_ros tf2_ros sobits_interfaces)
 
-add_executable(bbox_to_tf_fast_shot src/bbox_to_tf_fast_shot.cpp)
-ament_target_dependencies(bbox_to_tf_fast_shot rclcpp std_msgs geometry_msgs sensor_msgs pcl_conversions pcl_ros tf2_ros vision_msgs)
 
 install(TARGETS
   bbox_to_3d
   keypoint_to_3d
-  bbox_to_tf_fast_shot
   DESTINATION lib/${PROJECT_NAME}
 )
 
