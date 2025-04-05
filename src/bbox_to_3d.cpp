@@ -111,8 +111,7 @@ private:
           sub_centers.push_back({sub_center_x, sub_center_y});
         }
       }
-
-      // 最初に元の中心をチェック
+      
       if (original_index >= 0 && original_index < static_cast<int>(cloud_transformed_->points.size()))
       {
         const auto &point = cloud_transformed_->points[original_index];
