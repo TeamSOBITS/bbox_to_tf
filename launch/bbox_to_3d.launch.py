@@ -80,6 +80,13 @@ def generate_launch_description():
         default_value="true",
     )
 
+    enable_id = LaunchConfiguration("enable_id")
+    enable_id_cmd = DeclareLaunchArgument(
+        "enable_id",
+        description="Enable assigning IDs to detected objects",
+        default_value="false",
+    )
+
     bbox_to_3d_cmd = Node(
         package='image_to_position',
         executable='bbox_to_3d',
@@ -98,6 +105,7 @@ def generate_launch_description():
                 "max_clusterSize": max_cluster_size,
                 "noise_point_cloud_range": noise_point_cloud_range,
                 "fast_shot": fast_shot,
+                "enable_id": enable_id,
             }
         ]
     )
@@ -114,5 +122,6 @@ def generate_launch_description():
         max_cluster_size_cmd,
         noise_point_cloud_range_cmd,
         fast_shot_cmd,
+        enable_id_cmd,
         bbox_to_3d_cmd,
     ])

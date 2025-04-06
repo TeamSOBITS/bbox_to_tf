@@ -11,6 +11,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/filters/passthrough.h>
+#include <pcl/filters/crop_box.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -56,17 +57,28 @@ private:
   std::shared_ptr<message_filters::Synchronizer<BBoxesCloudSyncPolicy>> sync_;
   pcl::search::KdTree<PointT>::Ptr kdtree_;
   pcl::EuclideanClusterExtraction<PointT> euclid_clustering_;
+  bool enable_id_;
 
-  bool publish_tf(const pcl::PointXYZ &point, const std::string &frame_id)
+  std::string generateObjectId(const std::string& base_id, size_t index) const
   {
-    if (!std::isnan(point.x) && !std::isinf(point.x) &&
-        !std::isnan(point.y) && !std::isinf(point.y) &&
-        !std::isnan(point.z) && !std::isinf(point.z))
+    if (enable_id_)
+    {
+      return base_id + "_" + std::to_string(index);
+    }
+    else
+    {
+      return base_id;
+    }
+  }
+
+  bool publishObjectTf(const pcl::PointXYZ &point, const std::string &object_id)
+  {
+    if (checkNanInf(point) && !object_id.empty())
     {
       geometry_msgs::msg::TransformStamped transformStamped;
       transformStamped.header.stamp = this->now();
       transformStamped.header.frame_id = base_frame_name_;
-      transformStamped.child_frame_id = frame_id;
+      transformStamped.child_frame_id = object_id;
 
       transformStamped.transform.translation.x = point.x;
       transformStamped.transform.translation.y = point.y;
@@ -86,8 +98,8 @@ private:
   }
 
   void processBBoxFastShot(const std::shared_ptr<vision_msgs::msg::Detection2DArray> bbox_msg,
-                            const std::shared_ptr<sensor_msgs::msg::PointCloud2> pcl_msg,
-                            const std::shared_ptr<sensor_msgs::msg::Image> img_msg)
+                           const std::shared_ptr<sensor_msgs::msg::PointCloud2> pcl_msg,
+                           const std::shared_ptr<sensor_msgs::msg::Image> img_msg)
   {
     for (size_t i = 0; i < bbox_msg->detections.size(); ++i)
     {
@@ -95,7 +107,7 @@ private:
       int original_center_x = static_cast<int>(detection.bbox.center.position.x);
       int original_center_y = static_cast<int>(detection.bbox.center.position.y);
       int original_index = img_msg->width * original_center_y + original_center_x;
-      std::string object_id = detection.id + "_" + std::to_string(i);
+      std::string object_id = generateObjectId(detection.id, i);
       bool tf_published = false;
 
       int width = static_cast<int>(detection.bbox.size_x);
@@ -111,11 +123,11 @@ private:
           sub_centers.push_back({sub_center_x, sub_center_y});
         }
       }
-      
+
       if (original_index >= 0 && original_index < static_cast<int>(cloud_transformed_->points.size()))
       {
         const auto &point = cloud_transformed_->points[original_index];
-        if (publish_tf(point, object_id))
+        if (publishObjectTf(point, object_id))
         {
           tf_published = true;
         }
@@ -132,9 +144,9 @@ private:
           if (sub_index >= 0 && sub_index < static_cast<int>(cloud_transformed_->points.size()))
           {
             const auto &point = cloud_transformed_->points[sub_index];
-            if (publish_tf(point, object_id))
+            if (publishObjectTf(point, object_id))
             {
-              RCLCPP_INFO(this->get_logger(), "[BboxToTF] Published TF for object: %s, XYZ: (%f, %f, %f)", object_id.c_str(), point.x, point.y, point.z);
+              // RCLCPP_INFO(this->get_logger(), "[BboxToTF] Published TF for object: %s, XYZ: (%f, %f, %f)", object_id.c_str(), point.x, point.y, point.z);
               break;
             }
           }
@@ -218,7 +230,7 @@ private:
       if (!checkNanInf(cloud_transformed_->points[0]))
         continue;
       for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(),
-                                                          it_end = cluster_indices.end();
+                                                           it_end = cluster_indices.end();
            it != it_end;
            it++)
       {
@@ -232,28 +244,11 @@ private:
           min_pt = tmp_min_pt;
         }
       }
-      pcl::PassThrough<PointT> pass;
-      pass.setFilterFieldName("x");
-      if ((max_pt.x() - noise_point_cloud_range) > min_pt.x())
-        pass.setFilterLimits(min_pt.x(), max_pt.x() - noise_point_cloud_range);
-      else
-        pass.setFilterLimits(min_pt.x(), max_pt.x());
-      pass.setInputCloud(cloud_bbox_xyz);
-      pass.filter(*cloud_bbox_xyz);
-      pass.setFilterFieldName("y");
-      if ((max_pt.y() - noise_point_cloud_range) > (min_pt.y() + noise_point_cloud_range))
-        pass.setFilterLimits(min_pt.y() + noise_point_cloud_range, max_pt.y() - noise_point_cloud_range);
-      else
-        pass.setFilterLimits(min_pt.y(), max_pt.y());
-      pass.setInputCloud(cloud_bbox_xyz);
-      pass.filter(*cloud_bbox_xyz);
-      pass.setFilterFieldName("z");
-      if (max_pt.z() > (min_pt.z() + noise_point_cloud_range))
-        pass.setFilterLimits(min_pt.z() + noise_point_cloud_range, max_pt.z());
-      else
-        pass.setFilterLimits(min_pt.z(), max_pt.z());
-      pass.setInputCloud(cloud_bbox_xyz);
-      pass.filter(*cloud_bbox_xyz);
+      pcl::CropBox<PointT> cropBox;
+      cropBox.setMin(Eigen::Vector4f(min_pt.x(), min_pt.y() + noise_point_cloud_range, min_pt.z(), 1.0));
+      cropBox.setMax(Eigen::Vector4f(max_pt.x() - noise_point_cloud_range, max_pt.y() - noise_point_cloud_range, max_pt.z(), 1.0));
+      cropBox.setInputCloud(cloud_bbox_xyz);
+      cropBox.filter(*cloud_bbox_xyz);
       Eigen::Vector4f xyz_centroid;
       pcl::compute3DCentroid(*cloud_bbox_xyz, xyz_centroid);
       vision_msgs::msg::Detection3D object_pose;
@@ -280,10 +275,10 @@ private:
       object_pose.bbox.size.x = max_pt.x() - min_pt.x();
       object_pose.bbox.size.y = max_pt.y() - min_pt.y();
       object_pose.bbox.size.z = max_pt.z() - min_pt.z();
-      object_pose.id = bbox.id;
+      object_pose.id = generateObjectId(bbox.id, i);
       geometry_msgs::msg::TransformStamped transformStampedObj;
       transformStampedObj.header.frame_id = base_frame_name_;
-      transformStampedObj.child_frame_id = bbox.id;
+      transformStampedObj.child_frame_id = object_pose.id;
       transformStampedObj.header.stamp = this->now();
       transformStampedObj.transform.translation.x = xyz_centroid.x();
       transformStampedObj.transform.translation.y = xyz_centroid.y();
@@ -292,8 +287,8 @@ private:
       transformStampedObj.transform.rotation.y = 0.0;
       transformStampedObj.transform.rotation.z = 0.0;
       transformStampedObj.transform.rotation.w = 1.0;
-      object_pose_array.detections.push_back(object_pose);
       tfBroadcaster_.sendTransform(transformStampedObj);
+      object_pose_array.detections.push_back(object_pose);
       *combined_cloud += *cloud_bbox_xyz;
     }
     sensor_msgs::msg::PointCloud2 combined_cloud_msg;
@@ -305,8 +300,8 @@ private:
   }
 
   void callback_BBoxPCL(const std::shared_ptr<vision_msgs::msg::Detection2DArray> bbox_msg,
-                        const std::shared_ptr<sensor_msgs::msg::PointCloud2> pcl_msg,
-                        const std::shared_ptr<sensor_msgs::msg::Image> img_msg)
+                           const std::shared_ptr<sensor_msgs::msg::PointCloud2> pcl_msg,
+                           const std::shared_ptr<sensor_msgs::msg::Image> img_msg)
   {
     PointCloud cloud_src;
     pcl::fromROSMsg(*pcl_msg, cloud_src);
@@ -373,7 +368,7 @@ private:
 
 public:
   BboxTo3D() : Node("bbox_to_3d"), tfBuffer_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME)), tfListener_(tfBuffer_), tfBroadcaster_(this),
-               sub_bboxes_(), sub_pcl_(), sub_img_(), sync_()
+               sub_bboxes_(), sub_pcl_(), sub_img_(), sync_(), enable_id_(true)
   {
     this->declare_parameter("base_frame_name", "base_footprint");
     this->declare_parameter("bbox_topic_name", "objects_rect");
@@ -385,6 +380,7 @@ public:
     this->declare_parameter("max_clusterSize", 20000);
     this->declare_parameter("noise_point_cloud_range", 0.01);
     this->declare_parameter("fast_shot", false);
+    this->declare_parameter("enable_id", true);
     base_frame_name_ = this->get_parameter("base_frame_name").as_string();
     bbox_topic_name_ = this->get_parameter("bbox_topic_name").as_string();
     cloud_topic_name_ = this->get_parameter("cloud_topic_name").as_string();
@@ -394,6 +390,7 @@ public:
     max_clusterSize = this->get_parameter("max_clusterSize").as_int();
     noise_point_cloud_range = this->get_parameter("noise_point_cloud_range").as_double();
     fast_shot_ = this->get_parameter("fast_shot").as_bool();
+    enable_id_ = this->get_parameter("enable_id").as_bool();
     cloud_transformed_.reset(new PointCloud());
     kdtree_.reset(new pcl::search::KdTree<PointT>);
     euclid_clustering_.setClusterTolerance(cluster_tolerance);
@@ -409,7 +406,8 @@ public:
       auto response = std::make_shared<std_srvs::srv::SetBool::Response>();
       request->data = true;
       callback_RunCtr(request, response);
-      if (!response->success) {
+      if (!response->success)
+      {
         RCLCPP_ERROR(this->get_logger(), "Failed to start processing at initialization.");
       }
     }
