@@ -77,7 +77,7 @@ def generate_launch_description():
     fast_shot_cmd = DeclareLaunchArgument(
         "fast_shot",
         description="Use fast shot processing",
-        default_value="true",
+        default_value="false",
     )
 
     enable_id = LaunchConfiguration("enable_id")
