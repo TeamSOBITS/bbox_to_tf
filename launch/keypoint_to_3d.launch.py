@@ -7,14 +7,14 @@ def generate_launch_description():
 
     namespace = LaunchConfiguration("namespace")
     namespace_cmd = DeclareLaunchArgument(
-        "namespace", default_value="namespace", description="Namespace for the nodes"
+        "namespace", default_value="", description="Namespace for the nodes"
     )
 
     base_frame_name = LaunchConfiguration("base_frame_name")
     base_frame_name_cmd = DeclareLaunchArgument(
         "base_frame_name",
         description="Base frame name for the node",
-        default_value="base_footprint",
+        default_value="camera_base",
     )
 
     keypoints_topic_name = LaunchConfiguration("keypoints_topic_name")
@@ -45,6 +45,13 @@ def generate_launch_description():
         default_value="true",
     )
 
+    enable_id = LaunchConfiguration("enable_id")
+    enable_id_cmd = DeclareLaunchArgument(
+        "enable_id",
+        description="Enable assigning IDs to detected objects",
+        default_value="false",
+    )
+
     keypoint_to_3d_cmd = Node(
         package='image_to_position',
         executable='keypoint_to_3d',
@@ -58,6 +65,7 @@ def generate_launch_description():
                 "cloud_topic_name": cloud_topic_name,
                 "img_topic_name": img_topic_name,
                 "execute_default": execute_default,
+                "enable_id": enable_id,
             }
         ]
     )
@@ -69,5 +77,6 @@ def generate_launch_description():
         cloud_topic_name_cmd,
         img_topic_name_cmd,
         execute_default_cmd,
+        enable_id_cmd,
         keypoint_to_3d_cmd,
     ])

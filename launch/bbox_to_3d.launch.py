@@ -7,21 +7,21 @@ def generate_launch_description():
 
     namespace = LaunchConfiguration("namespace")
     namespace_cmd = DeclareLaunchArgument(
-        "namespace", default_value="namespace", description="Namespace for the nodes"
+        "namespace", default_value="", description="Namespace for the nodes"
     )
 
     base_frame_name = LaunchConfiguration("base_frame_name")
     base_frame_name_cmd = DeclareLaunchArgument(
         "base_frame_name",
         description="Base frame name for the node",
-        default_value="base_footprint",
+        default_value="camera_base",
     )
 
     bbox_topic_name = LaunchConfiguration("bbox_topic_name")
     bbox_topic_name_cmd = DeclareLaunchArgument(
         "bbox_topic_name",
         description="Bounding box topic name",
-        default_value="objects_rect",
+        default_value="/yolo_ros/object_boxes",
     )
 
     cloud_topic_name = LaunchConfiguration("cloud_topic_name")
@@ -73,6 +73,20 @@ def generate_launch_description():
         default_value="0.01",
     )
 
+    fast_shot = LaunchConfiguration("fast_shot")
+    fast_shot_cmd = DeclareLaunchArgument(
+        "fast_shot",
+        description="Use fast shot processing",
+        default_value="false",
+    )
+
+    enable_id = LaunchConfiguration("enable_id")
+    enable_id_cmd = DeclareLaunchArgument(
+        "enable_id",
+        description="Enable assigning IDs to detected objects",
+        default_value="false",
+    )
+
     bbox_to_3d_cmd = Node(
         package='image_to_position',
         executable='bbox_to_3d',
@@ -90,6 +104,8 @@ def generate_launch_description():
                 "min_clusterSize": min_cluster_size,
                 "max_clusterSize": max_cluster_size,
                 "noise_point_cloud_range": noise_point_cloud_range,
+                "fast_shot": fast_shot,
+                "enable_id": enable_id,
             }
         ]
     )
@@ -105,5 +121,7 @@ def generate_launch_description():
         min_cluster_size_cmd,
         max_cluster_size_cmd,
         noise_point_cloud_range_cmd,
+        fast_shot_cmd,
+        enable_id_cmd,
         bbox_to_3d_cmd,
     ])
