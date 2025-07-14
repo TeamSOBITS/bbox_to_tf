@@ -16,8 +16,9 @@ python3 -m pip install -U pip
 python3 -m pip install \
     matplotlib \
 
-sudo apt-get update
-sudo apt-get install -y \
+sudo apt update
+sudo apt install -y \
+    ros-$ROS_DISTRO-vision-msgs \
     ros-$ROS_DISTRO-tf2 \
     ros-$ROS_DISTRO-tf2-ros \
     ros-$ROS_DISTRO-geometry-msgs \
