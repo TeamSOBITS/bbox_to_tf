@@ -102,84 +102,6 @@ class BboxTo3D : public rclcpp::Node {
       tfBroadcaster_.sendTransform(transformStamped);
     }
 
-    vision_msgs::msg::Detection3D processBBoxFastShot(
-          const std::shared_ptr<vision_msgs::msg::Detection2D> bbox_msg,
-          const std::shared_ptr<sensor_msgs::msg::CameraInfo>  info_msg,
-          const PointCloud::Ptr& point_cloud, PointCloud::Ptr& point_cloud_bbox) {
-
-      vision_msgs::msg::Detection3D object_pose;
-      object_pose.header = info_msg->header;
-      object_pose.header.frame_id = base_frame_name_;
-
-      int center_x = static_cast<int>(bbox_msg->bbox.center.position.x);
-      int center_y = static_cast<int>(bbox_msg->bbox.center.position.y);
-      int center_index = info_msg->width * center_y + center_x;
-      geometry_msgs::msg::Point object_point;
-      geometry_msgs::msg::Point object_rotate;
-      bool set_tf = false;
-
-      if ((0 <= center_index) && (center_index < static_cast<int>(point_cloud->points.size()))) {
-        if (checkNanInf(point_cloud->points[center_index])) {
-          object_point.x = point_cloud->points[center_index].x;
-          object_point.y = point_cloud->points[center_index].y;
-          object_point.z = point_cloud->points[center_index].z;
-          object_rotate.x = 0.; // Roll  // TODO
-          object_rotate.y = 0.; // Pitch // TODO
-          object_rotate.z = 0.; // Yaw   // TODO
-          set_tf = true;
-        }
-      }
-
-      int width = static_cast<int>(bbox_msg->bbox.size_x);
-      int height = static_cast<int>(bbox_msg->bbox.size_y);
-      for (int row = 0; row < 3; row++) {
-        if (set_tf) break;
-        for (int col = 0; col < 3; col++) {
-          int sub_center_x = center_x - width / 2 + (col * width / 3) + width / 6;
-          int sub_center_y = center_y - height / 2 + (row * height / 3) + height / 6;
-          int sub_index = info_msg->width * sub_center_y + sub_center_x;
-
-          if (sub_index >= 0 && sub_index < static_cast<int>(point_cloud->points.size())) {
-            if (checkNanInf(point_cloud->points[sub_index])) {
-              object_point.x = point_cloud->points[sub_index].x;
-              object_point.y = point_cloud->points[sub_index].y;
-              object_point.z = point_cloud->points[sub_index].z;
-              object_rotate.x = 0.; // Roll  // TODO
-              object_rotate.y = 0.; // Pitch // TODO
-              object_rotate.z = 0.; // Yaw   // TODO
-              set_tf = true;
-              break;
-            }
-          }
-        }
-      }
-
-      if (set_tf) {
-        geometry_msgs::msg::Pose obj_pose;
-        obj_pose.position = object_point;
-        obj_pose.orientation = get_quat_from_euler(object_rotate);
-
-        vision_msgs::msg::ObjectHypothesisWithPose ohwp;
-        PointT pt;
-        pt.x = obj_pose.position.x; pt.y = obj_pose.position.y; pt.z = obj_pose.position.z;
-        point_cloud_bbox->points.push_back(pt);
-
-        ohwp.hypothesis.class_id = bbox_msg->results[0].hypothesis.class_id;
-        ohwp.hypothesis.score = bbox_msg->results[0].hypothesis.score;
-        ohwp.pose.pose = obj_pose;
-        ohwp.pose.covariance = bbox_msg->results[0].pose.covariance;
-        object_pose.results.push_back(ohwp);
-        object_pose.bbox.center = obj_pose;
-        object_pose.bbox.size.x = 2*noise_point_cloud_range_;
-        object_pose.bbox.size.y = 2*noise_point_cloud_range_;
-        object_pose.bbox.size.z = 2*noise_point_cloud_range_;
-        object_pose.id = bbox_msg->id;
-        publishObjectTf(obj_pose, bbox_msg->id);
-      }
-
-      return object_pose;
-    }
-
     vision_msgs::msg::Detection3D processBBoxClustering(
           const std::shared_ptr<vision_msgs::msg::Detection2D> bbox_msg,
           const std::shared_ptr<sensor_msgs::msg::CameraInfo>  info_msg,
@@ -298,6 +220,84 @@ class BboxTo3D : public rclcpp::Node {
       return object_pose;
     }
 
+    vision_msgs::msg::Detection3D processBBoxFastShot(
+          const std::shared_ptr<vision_msgs::msg::Detection2D> bbox_msg,
+          const std::shared_ptr<sensor_msgs::msg::CameraInfo>  info_msg,
+          const PointCloud::Ptr& point_cloud, PointCloud::Ptr& point_cloud_bbox) {
+
+      vision_msgs::msg::Detection3D object_pose;
+      object_pose.header = info_msg->header;
+      object_pose.header.frame_id = base_frame_name_;
+
+      int center_x = static_cast<int>(bbox_msg->bbox.center.position.x);
+      int center_y = static_cast<int>(bbox_msg->bbox.center.position.y);
+      int center_index = info_msg->width * center_y + center_x;
+      geometry_msgs::msg::Point object_point;
+      geometry_msgs::msg::Point object_rotate;
+      bool set_tf = false;
+
+      if ((0 <= center_index) && (center_index < static_cast<int>(point_cloud->points.size()))) {
+        if (checkNanInf(point_cloud->points[center_index])) {
+          object_point.x = point_cloud->points[center_index].x;
+          object_point.y = point_cloud->points[center_index].y;
+          object_point.z = point_cloud->points[center_index].z;
+          object_rotate.x = 0.; // Roll  // TODO
+          object_rotate.y = 0.; // Pitch // TODO
+          object_rotate.z = 0.; // Yaw   // TODO
+          set_tf = true;
+        }
+      }
+
+      int width = static_cast<int>(bbox_msg->bbox.size_x);
+      int height = static_cast<int>(bbox_msg->bbox.size_y);
+      for (int row = 0; row < 3; row++) {
+        if (set_tf) break;
+        for (int col = 0; col < 3; col++) {
+          int sub_center_x = center_x - width / 2 + (col * width / 3) + width / 6;
+          int sub_center_y = center_y - height / 2 + (row * height / 3) + height / 6;
+          int sub_index = info_msg->width * sub_center_y + sub_center_x;
+
+          if (sub_index >= 0 && sub_index < static_cast<int>(point_cloud->points.size())) {
+            if (checkNanInf(point_cloud->points[sub_index])) {
+              object_point.x = point_cloud->points[sub_index].x;
+              object_point.y = point_cloud->points[sub_index].y;
+              object_point.z = point_cloud->points[sub_index].z;
+              object_rotate.x = 0.; // Roll  // TODO
+              object_rotate.y = 0.; // Pitch // TODO
+              object_rotate.z = 0.; // Yaw   // TODO
+              set_tf = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (set_tf) {
+        geometry_msgs::msg::Pose obj_pose;
+        obj_pose.position = object_point;
+        obj_pose.orientation = get_quat_from_euler(object_rotate);
+
+        vision_msgs::msg::ObjectHypothesisWithPose ohwp;
+        PointT pt;
+        pt.x = obj_pose.position.x; pt.y = obj_pose.position.y; pt.z = obj_pose.position.z;
+        point_cloud_bbox->points.push_back(pt);
+
+        ohwp.hypothesis.class_id = bbox_msg->results[0].hypothesis.class_id;
+        ohwp.hypothesis.score = bbox_msg->results[0].hypothesis.score;
+        ohwp.pose.pose = obj_pose;
+        ohwp.pose.covariance = bbox_msg->results[0].pose.covariance;
+        object_pose.results.push_back(ohwp);
+        object_pose.bbox.center = obj_pose;
+        object_pose.bbox.size.x = 2*noise_point_cloud_range_;
+        object_pose.bbox.size.y = 2*noise_point_cloud_range_;
+        object_pose.bbox.size.z = 2*noise_point_cloud_range_;
+        object_pose.id = bbox_msg->id;
+        publishObjectTf(obj_pose, bbox_msg->id);
+      }
+
+      return object_pose;
+    }
+
     vision_msgs::msg::Detection3D processBBoxDepthImage(
           const std::shared_ptr<vision_msgs::msg::Detection2D> bbox_msg,
           const std::shared_ptr<sensor_msgs::msg::CameraInfo>  info_msg,
@@ -307,7 +307,6 @@ class BboxTo3D : public rclcpp::Node {
       object_pose.header = info_msg->header;
       object_pose.header.frame_id = base_frame_name_;
 
-      std::string encoding = img_msg->encoding;
       int bytes_per_pixel = img_msg->step / img_msg->width;
       int center_x = static_cast<int>(bbox_msg->bbox.center.position.x);
       int center_y = static_cast<int>(bbox_msg->bbox.center.position.y);
@@ -319,10 +318,10 @@ class BboxTo3D : public rclcpp::Node {
 
       if ((0 <= center_index) && (center_index < static_cast<int>(img_msg->data.size()))) {
         set_tf = true;
-        if (encoding == "32FC1") {
+        if (img_msg->encoding == "32FC1") {
           const float* data = reinterpret_cast<const float*>(&img_msg->data[center_index]);
           object_point.z = *data;
-        } else if (encoding == "16UC1" || encoding == "32SC1") {
+        } else if (img_msg->encoding == "16UC1" || img_msg->encoding == "32SC1") {
           const void* ptr = &img_msg->data[center_index];
           int raw_value;
           std::memcpy(&raw_value, ptr, bytes_per_pixel);
@@ -465,8 +464,9 @@ class BboxTo3D : public rclcpp::Node {
 
     void callback_runctr(const std::shared_ptr<std_srvs::srv::SetBool::Request> req, std::shared_ptr<std_srvs::srv::SetBool::Response> res) {
       if (req->data) {
+        rmw_qos_profile_t sensor_qos_profile = rmw_qos_profile_sensor_data;
         if (!sub_bboxes_) sub_bboxes_ = std::make_shared<message_filters::Subscriber<vision_msgs::msg::Detection2DArray>>(this, bbox_topic_name_);
-        if (!sub_pcl_)    sub_pcl_    = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, cloud_topic_name_);
+        if (!sub_pcl_)    sub_pcl_    = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, cloud_topic_name_, sensor_qos_profile); ///
         if (!sub_img_)    sub_img_    = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, depth_topic_name_);
         if (!sub_info_)   sub_info_   = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>(this, info_topic_name_);
 
@@ -519,7 +519,7 @@ class BboxTo3D : public rclcpp::Node {
       this->declare_parameter("min_cluster_size", 100);
       this->declare_parameter("max_cluster_size", 20000);
       this->declare_parameter("noise_point_cloud_range", 0.01);
-      this->declare_parameter("enable_id", true);
+      this->declare_parameter("enable_id", false);
       this->declare_parameter("positioning_detection_mode", "point_cloud");
 
 
@@ -550,7 +550,7 @@ class BboxTo3D : public rclcpp::Node {
       auto response = std::make_shared<std_srvs::srv::SetBool::Response>();
       request->data = this->get_parameter("execute_default").as_bool();
       callback_runctr(request, response);
-  }
+    }
 };
 
 

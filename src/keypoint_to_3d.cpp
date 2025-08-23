@@ -112,38 +112,86 @@ class KeyTo3D : public rclcpp::Node {
 
       for (size_t human_id = 0; human_id < pose_2d_array_msg->key_points_array.size(); human_id++) {
 
-        auto pose_2d = std::make_shared<sobits_interfaces::msg::KeyPoint>(pose_2d_array_msg->key_points_array[human_id]);
-        if ( pose_2d->key_points.size() != pose_2d->key_names.size() ) continue;
+        sobits_interfaces::msg::KeyPoint pose_2d = pose_2d_array_msg->key_points_array[human_id];
+        if ( pose_2d.key_points.size() != pose_2d.key_names.size() ) continue;
 
         sobits_interfaces::msg::KeyPoint pose_3d;
         pose_3d.key_names.clear();
         pose_3d.key_points.clear();
-        pose_3d.score = pose_2d->score;
-        for (size_t key_num = 0; key_num < pose_2d->key_points.size(); key_num++) {
-          int point_x = (int)(pose_2d->key_points[key_num].x);
-          int point_y = (int)(pose_2d->key_points[key_num].y);
+        pose_3d.score = pose_2d.score;
+        for (size_t key_num = 0; key_num < pose_2d.key_points.size(); key_num++) {
+          int point_x = static_cast<int>(pose_2d.key_points[key_num].x);
+          int point_y = static_cast<int>(pose_2d.key_points[key_num].y);
+          int point_index;
 
-          int index = (int)(img_msg->width) * point_y + point_x;
+          geometry_msgs::msg::Pose part_pose;
+          geometry_msgs::msg::Point part_rotate;
+          bool set_tf = false;
 
-          // Get the 3D Pose(x,y,z) from each 2D Pose(x,y) body part by refering to the Point Cloud
-          if ((0 <= point_x) && (0 <= point_y) && (0 <= index) && (index < (int)(point_cloud->points.size()))) {
-            if (checkNanInf(point_cloud->points[index])) {
-              geometry_msgs::msg::Pose part_pose;
-              geometry_msgs::msg::Point part_rotate;
-              part_pose.position.x = point_cloud->points[index].x;
-              part_pose.position.y = point_cloud->points[index].y;
-              part_pose.position.z = point_cloud->points[index].z;
-              part_rotate.x = 0.; // Roll  // TODO
-              part_rotate.y = 0.; // Pitch // TODO
-              part_rotate.z = 0.; // Yaw   // TODO
-              part_pose.orientation = get_quat_from_euler(part_rotate);
-
-              pose_3d.key_names.push_back(pose_2d->key_names[key_num]);
-              pose_3d.key_points.push_back(part_pose.position);
-
-              // Send to TF
-              publishObjectTf(part_pose, generateObjectId(pose_2d->key_names[key_num], human_id));
+          if (positioning_detection_mode_ == "point_cloud") {
+            point_index = info_msg->width * point_y + point_x;
+            // Get the 3D Pose(x,y,z) from each 2D Pose(x,y) body part by refering to the Point Cloud
+            if ((0 <= point_x) && (0 <= point_y) && (0 <= point_index) && (point_index < static_cast<int>(point_cloud->points.size()))) {
+              if (checkNanInf(point_cloud->points[point_index])) {
+                part_pose.position.x = point_cloud->points[point_index].x;
+                part_pose.position.y = point_cloud->points[point_index].y;
+                part_pose.position.z = point_cloud->points[point_index].z;
+                part_rotate.x = 0.; // Roll  // TODO
+                part_rotate.y = 0.; // Pitch // TODO
+                part_rotate.z = 0.; // Yaw   // TODO
+                part_pose.orientation = get_quat_from_euler(part_rotate);
+                set_tf = true;
+              }
             }
+          } else if (positioning_detection_mode_ == "depth_image") {
+
+            int bytes_per_pixel = img_msg->step / img_msg->width;
+            point_index = img_msg->step * point_y + point_x * bytes_per_pixel;
+
+            if (((0 <= point_index) && (point_index < static_cast<int>(img_msg->data.size())))) {
+              set_tf = true;
+              if (img_msg->encoding == "32FC1") {
+                const float* data = reinterpret_cast<const float*>(&img_msg->data[point_index]);
+                part_pose.position.z = *data;
+              } else if (img_msg->encoding == "16UC1" || img_msg->encoding == "32SC1") {
+                const void* ptr = &img_msg->data[point_index];
+                int raw_value;
+                std::memcpy(&raw_value, ptr, bytes_per_pixel);
+                part_pose.position.z = static_cast<float>(raw_value) * 0.001f;
+              } else set_tf = false;
+            }
+
+            if (set_tf) {
+              double fx = info_msg->k[0];
+              double fy = info_msg->k[4];
+              double cx = info_msg->k[2];
+              double cy = info_msg->k[5];
+
+              part_pose.position.x = (point_x - cx) * part_pose.position.z / fx;
+              part_pose.position.y = (point_y - cy) * part_pose.position.z / fy;
+
+              geometry_msgs::msg::PointStamped object_point_stamped;
+              object_point_stamped.header = info_msg->header;
+              object_point_stamped.point = part_pose.position;
+
+              try {
+                tfBuffer_.transform(object_point_stamped, object_point_stamped, base_frame_name_);
+                part_pose.position = object_point_stamped.point;
+                part_rotate.x = 0.; // Roll  // TODO
+                part_rotate.y = 0.; // Pitch // TODO
+                part_rotate.z = 0.; // Yaw   // TODO
+                part_pose.orientation = get_quat_from_euler(part_rotate);
+              } catch (tf2::TransformException &ex) {set_tf = false;}
+            }
+
+          } else return;
+
+          if (set_tf) {
+            pose_3d.key_names.push_back(pose_2d.key_names[key_num]);
+            pose_3d.key_points.push_back(part_pose.position);
+
+            // Send to TF
+            publishObjectTf(part_pose, generateObjectId(pose_2d.key_names[key_num], human_id));
           }
         }
 
@@ -158,23 +206,29 @@ class KeyTo3D : public rclcpp::Node {
     void callback_KeyPointCloud(const std::shared_ptr<sobits_interfaces::msg::KeyPointArray> pose_2d_array_msg,
                                 const std::shared_ptr<sensor_msgs::msg::PointCloud2>         pcl_msg,
                                 const std::shared_ptr<sensor_msgs::msg::CameraInfo>          info_msg) {
+      std::shared_ptr<sensor_msgs::msg::Image> dummy_img;
       // PointCloud cloud_src;
       // PointCloud::Ptr cloud_transformed(new PointCloud());
       PointCloud::Ptr cloud_src(new PointCloud());
       pcl::fromROSMsg(*pcl_msg, *cloud_src);
       if (!tfBuffer_.canTransform(base_frame_name_, pcl_msg->header.frame_id, pcl_msg->header.stamp)) return;
       if (!pcl_ros::transformPointCloud(base_frame_name_, *cloud_src, *cloud_src, tfBuffer_)) return;
+
+      if (positioning_detection_mode_ == "point_cloud") processKeysTo3D(pose_2d_array_msg, info_msg, cloud_src, dummy_img);
     }
 
     void callback_KeyDepthImage(const std::shared_ptr<sobits_interfaces::msg::KeyPointArray> pose_2d_array_msg,
                                 const std::shared_ptr<sensor_msgs::msg::Image>               img_msg,
                                 const std::shared_ptr<sensor_msgs::msg::CameraInfo>          info_msg) {
+      PointCloud::Ptr dummy_cloud(new PointCloud());
+      if (positioning_detection_mode_ == "depth_image") processKeysTo3D(pose_2d_array_msg, info_msg, dummy_cloud, img_msg);
     }
 
     void callback_runctr(const std::shared_ptr<std_srvs::srv::SetBool::Request> req, std::shared_ptr<std_srvs::srv::SetBool::Response> res) {
       if (req->data) {
+        rmw_qos_profile_t sensor_qos_profile = rmw_qos_profile_sensor_data;
         if (!sub_key_2d_array_) sub_key_2d_array_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::KeyPointArray>>(this, keypoint_2d_topic_name_);
-        if (!sub_pcl_)          sub_pcl_          = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, cloud_topic_name_);
+        if (!sub_pcl_)          sub_pcl_          = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, cloud_topic_name_, sensor_qos_profile); ///
         if (!sub_img_)          sub_img_          = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, depth_topic_name_);
         if (!sub_info_)         sub_info_         = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>(this, info_topic_name_);
 
@@ -223,7 +277,7 @@ class KeyTo3D : public rclcpp::Node {
       this->declare_parameter("info_topic_name", "dummy_info");
       this->declare_parameter("execute_default", true);
 
-      this->declare_parameter("enable_id", true);
+      this->declare_parameter("enable_id", false);
       this->declare_parameter("positioning_detection_mode", "point_cloud");
 
 
