@@ -1,5 +1,4 @@
 #include <rclcpp/rclcpp.hpp>
-#include <math.h>
 
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
@@ -17,9 +16,6 @@
 #include <sensor_msgs/msg/image.hpp>
 
 
-#include <pcl/point_cloud.h>
-// #include <pcl/point_types.h>
-
 
 
 
@@ -28,8 +24,6 @@
 
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
-// #include <message_filters/synchronizer.h>
-// #include <message_filters/time_synchronizer.h>
 
 #include "sobits_interfaces/msg/key_point_array.hpp"
 
@@ -37,8 +31,6 @@
 
 #include <std_srvs/srv/set_bool.hpp>
 
-// #include <iostream>
-// #include <unordered_map>
 
 typedef pcl::PointXYZ           PointT;
 typedef pcl::PointCloud<PointT> PointCloud;
@@ -48,7 +40,6 @@ typedef message_filters::sync_policies::ApproximateTime<sobits_interfaces::msg::
 class KeyTo3D : public rclcpp::Node {
   private:
     tf2_ros::Buffer               tfBuffer_;
-    tf2_ros::TransformListener    tfListener_;
     tf2_ros::TransformBroadcaster tfBroadcaster_;
 
     std::string  base_frame_name_;
@@ -207,8 +198,7 @@ class KeyTo3D : public rclcpp::Node {
                                 const std::shared_ptr<sensor_msgs::msg::PointCloud2>         pcl_msg,
                                 const std::shared_ptr<sensor_msgs::msg::CameraInfo>          info_msg) {
       std::shared_ptr<sensor_msgs::msg::Image> dummy_img;
-      // PointCloud cloud_src;
-      // PointCloud::Ptr cloud_transformed(new PointCloud());
+
       PointCloud::Ptr cloud_src(new PointCloud());
       pcl::fromROSMsg(*pcl_msg, *cloud_src);
       if (!tfBuffer_.canTransform(base_frame_name_, pcl_msg->header.frame_id, pcl_msg->header.stamp)) return;
@@ -228,7 +218,7 @@ class KeyTo3D : public rclcpp::Node {
       if (req->data) {
         rmw_qos_profile_t sensor_qos_profile = rmw_qos_profile_sensor_data;
         if (!sub_key_2d_array_) sub_key_2d_array_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::KeyPointArray>>(this, keypoint_2d_topic_name_);
-        if (!sub_pcl_)          sub_pcl_          = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, cloud_topic_name_, sensor_qos_profile); ///
+        if (!sub_pcl_)          sub_pcl_          = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, cloud_topic_name_, sensor_qos_profile);
         if (!sub_img_)          sub_img_          = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, depth_topic_name_);
         if (!sub_info_)         sub_info_         = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>(this, info_topic_name_);
 
@@ -268,7 +258,7 @@ class KeyTo3D : public rclcpp::Node {
     }
 
   public:
-    KeyTo3D() : Node("key_to_3d"), tfBuffer_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME)), tfListener_(tfBuffer_), tfBroadcaster_(this), sub_key_2d_array_(), sub_pcl_(), sub_img_(), sub_info_(), sync_point_cloud_(), sync_depth_image_() {
+    KeyTo3D() : Node("key_to_3d"), tfBuffer_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME)), tfBroadcaster_(this), sub_key_2d_array_(), sub_pcl_(), sub_img_(), sub_info_(), sync_point_cloud_(), sync_depth_image_() {
 
       this->declare_parameter("base_frame_name", "base_footprint");
       this->declare_parameter("keypoints_topic_name", "pose_array");
