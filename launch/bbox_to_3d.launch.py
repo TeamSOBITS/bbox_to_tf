@@ -92,8 +92,8 @@ def generate_launch_description():
     positioning_detection_mode = LaunchConfiguration("positioning_detection_mode")
     positioning_detection_mode_cmd = DeclareLaunchArgument(
         "positioning_detection_mode",
-        description="Use fast shot processing",
-        default_value="false",
+        description="method of 2D to 3D position. choose of ['point_cloud', 'depth_image']",
+        default_value="point_cloud",
     )
 
     bbox_to_3d_cmd = Node(
