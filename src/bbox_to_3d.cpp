@@ -325,7 +325,7 @@ class BboxTo3D : public rclcpp::Node {
           const void* ptr = &img_msg->data[center_index];
           int raw_value;
           std::memcpy(&raw_value, ptr, bytes_per_pixel);
-          object_point.z = static_cast<float>(raw_value) * 0.001f;
+          object_point.z = static_cast<float>(raw_value) / 1000.;
         } else set_tf = false;
       }
 

@@ -157,7 +157,7 @@ class KeyTo3D : public rclcpp::Node {
                 const void* ptr = &img_msg->data[point_index];
                 int raw_value;
                 std::memcpy(&raw_value, ptr, bytes_per_pixel);
-                part_pose.position.z = static_cast<float>(raw_value) * 0.001f;
+                part_pose.position.z = static_cast<float>(raw_value) / 1000.;
               } else set_tf = false;
             }
 
