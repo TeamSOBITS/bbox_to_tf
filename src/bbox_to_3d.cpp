@@ -40,6 +40,7 @@ typedef message_filters::sync_policies::ApproximateTime<vision_msgs::msg::Detect
 class BboxTo3D : public rclcpp::Node {
   private:
     tf2_ros::Buffer               tfBuffer_;
+    tf2_ros::TransformListener    tfListener_;
     tf2_ros::TransformBroadcaster tfBroadcaster_;
 
     std::string  base_frame_name_;
@@ -184,6 +185,7 @@ class BboxTo3D : public rclcpp::Node {
       cropBox.filter(*point_cloud_bbox);
       Eigen::Vector4f xyz_centroid;
       pcl::compute3DCentroid(*point_cloud_bbox, xyz_centroid);
+      pcl::getMinMax3D(*point_cloud_bbox, min_pt, max_pt);
 
       object_point.x = xyz_centroid.x();
       object_point.y = xyz_centroid.y();
@@ -191,6 +193,12 @@ class BboxTo3D : public rclcpp::Node {
       object_rotate.x = 0.; // Roll  // TODO
       object_rotate.y = 0.; // Pitch // TODO
       object_rotate.z = 0.; // Yaw   // TODO
+      if        ((xyz_centroid.x() - min_pt.x()) > (xyz_centroid.z() - min_pt.z() + noise_point_cloud_range_/4.)) {
+        object_rotate.y =  M_PI/2.;
+      } else if ((xyz_centroid.y() - min_pt.y()) > (xyz_centroid.z() - min_pt.z() + noise_point_cloud_range_/4.)) {
+        object_rotate.x = -M_PI/2.;
+        object_rotate.y =  M_PI/2.;
+      }
       geometry_msgs::msg::Pose obj_pose;
       obj_pose.position = object_point;
       obj_pose.orientation = get_quat_from_euler(object_rotate);
@@ -309,14 +317,15 @@ class BboxTo3D : public rclcpp::Node {
 
       if ((0 <= center_index) && (center_index < static_cast<int>(img_msg->data.size()))) {
         set_tf = true;
-        if (img_msg->encoding == "32FC1") {
+        if        (img_msg->encoding == "32FC1") {
           const float* data = reinterpret_cast<const float*>(&img_msg->data[center_index]);
           object_point.z = *data;
-        } else if (img_msg->encoding == "16UC1" || img_msg->encoding == "32SC1") {
-          const void* ptr = &img_msg->data[center_index];
-          int raw_value;
-          std::memcpy(&raw_value, ptr, bytes_per_pixel);
-          object_point.z = static_cast<float>(raw_value) / 1000.;
+        } else if (img_msg->encoding == "16UC1") {
+          const uint16_t* data = reinterpret_cast<const uint16_t*>(&img_msg->data[center_index]);
+          object_point.z = static_cast<float>(*data) / 1000.;
+        } else if (img_msg->encoding == "32SC1") {
+          const int32_t* data = reinterpret_cast<const int32_t*>(&img_msg->data[center_index]);
+          object_point.z = static_cast<float>(*data) / 1000.;
         } else set_tf = false;
       }
 
@@ -496,7 +505,7 @@ class BboxTo3D : public rclcpp::Node {
     }
 
   public:
-    BboxTo3D() : Node("bbox_to_3d"), tfBuffer_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME)), tfBroadcaster_(this), sub_bboxes_(), sub_pcl_(), sub_img_(), sub_info_(), sync_point_cloud_(), sync_depth_image_() {
+    BboxTo3D() : Node("bbox_to_3d"), tfBuffer_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME)), tfListener_(tfBuffer_), tfBroadcaster_(this), sub_bboxes_(), sub_pcl_(), sub_img_(), sub_info_(), sync_point_cloud_(), sync_depth_image_() {
 
       this->declare_parameter("base_frame_name", "base_footprint");
       this->declare_parameter("bbox_topic_name", "objects_rect");

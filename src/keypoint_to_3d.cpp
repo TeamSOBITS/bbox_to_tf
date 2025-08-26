@@ -40,6 +40,7 @@ typedef message_filters::sync_policies::ApproximateTime<sobits_interfaces::msg::
 class KeyTo3D : public rclcpp::Node {
   private:
     tf2_ros::Buffer               tfBuffer_;
+    tf2_ros::TransformListener    tfListener_;
     tf2_ros::TransformBroadcaster tfBroadcaster_;
 
     std::string  base_frame_name_;
@@ -141,14 +142,15 @@ class KeyTo3D : public rclcpp::Node {
 
             if (((0 <= point_index) && (point_index < static_cast<int>(img_msg->data.size())))) {
               set_tf = true;
-              if (img_msg->encoding == "32FC1") {
+              if        (img_msg->encoding == "32FC1") {
                 const float* data = reinterpret_cast<const float*>(&img_msg->data[point_index]);
                 part_pose.position.z = *data;
-              } else if (img_msg->encoding == "16UC1" || img_msg->encoding == "32SC1") {
-                const void* ptr = &img_msg->data[point_index];
-                int raw_value;
-                std::memcpy(&raw_value, ptr, bytes_per_pixel);
-                part_pose.position.z = static_cast<float>(raw_value) / 1000.;
+              } else if (img_msg->encoding == "16UC1") {
+                const uint16_t* data = reinterpret_cast<const uint16_t*>(&img_msg->data[point_index]);
+                part_pose.position.z = static_cast<float>(*data) / 1000.;
+              } else if (img_msg->encoding == "32SC1") {
+                const int32_t* data = reinterpret_cast<const int32_t*>(&img_msg->data[point_index]);
+                part_pose.position.z = static_cast<float>(*data) / 1000.;
               } else set_tf = false;
             }
 
@@ -258,7 +260,7 @@ class KeyTo3D : public rclcpp::Node {
     }
 
   public:
-    KeyTo3D() : Node("key_to_3d"), tfBuffer_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME)), tfBroadcaster_(this), sub_key_2d_array_(), sub_pcl_(), sub_img_(), sub_info_(), sync_point_cloud_(), sync_depth_image_() {
+    KeyTo3D() : Node("key_to_3d"), tfBuffer_(std::make_shared<rclcpp::Clock>(RCL_ROS_TIME)), tfListener_(tfBuffer_), tfBroadcaster_(this), sub_key_2d_array_(), sub_pcl_(), sub_img_(), sub_info_(), sync_point_cloud_(), sync_depth_image_() {
 
       this->declare_parameter("base_frame_name", "base_footprint");
       this->declare_parameter("keypoints_topic_name", "pose_array");

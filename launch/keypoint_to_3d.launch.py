@@ -64,7 +64,7 @@ def generate_launch_description():
     positioning_detection_mode = LaunchConfiguration("positioning_detection_mode")
     positioning_detection_mode_cmd = DeclareLaunchArgument(
         "positioning_detection_mode",
-        description="method of 2D to 3D position. choose of ['point_cloud', 'depth_image', 'fast_point']",
+        description="method of 2D to 3D position. choose of ['point_cloud', 'depth_image']",
         default_value="point_cloud",
     )
 

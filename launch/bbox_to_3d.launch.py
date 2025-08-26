@@ -65,7 +65,7 @@ def generate_launch_description():
     min_cluster_size_cmd = DeclareLaunchArgument(
         "min_clusterSize",
         description="Minimum cluster size (Int)",
-        default_value="100",
+        default_value="200",
     )
 
     max_cluster_size = LaunchConfiguration("max_clusterSize")
@@ -92,7 +92,7 @@ def generate_launch_description():
     positioning_detection_mode = LaunchConfiguration("positioning_detection_mode")
     positioning_detection_mode_cmd = DeclareLaunchArgument(
         "positioning_detection_mode",
-        description="method of 2D to 3D position. choose of ['point_cloud', 'depth_image']",
+        description="method of 2D to 3D position. choose of ['point_cloud', 'depth_image', 'fast_point']",
         default_value="point_cloud",
     )
 
