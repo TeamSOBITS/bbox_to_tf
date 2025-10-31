@@ -9,7 +9,7 @@ DIR=`pwd`
 
 # Clone required packages
 cd ..
-git clone -b feature/humble-devel https://github.com/TeamSOBITS/sobits_msgs.git
+git clone -b feature/humble-devel https://github.com/TeamSOBITS/sobits_interfaces.git
 
 # Install common dependencies
 python3 -m pip install -U pip

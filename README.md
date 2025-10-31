@@ -106,7 +106,7 @@
 - bbox_topic_name\
   bbox_topic_nameはBoundingBoxのトピック名です．
   具体的には，sobits_interfaces/BoundingBoxes型のメッセージが飛んでいるトピック名を指定する．\
-  これはSOBITSが独自に作ったカスタムROSメッセージであるためsobits_msgsをgit cloneしてある必用があります．\
+  これはSOBITSが独自に作ったカスタムROSメッセージであるためsobits_interfacesをgit cloneしてある必用があります．\
   しかし，このパッケージに依存しているパッケージのinstall.shで既にgit cloneされているはずです．
 
 - cloud_topic_name\

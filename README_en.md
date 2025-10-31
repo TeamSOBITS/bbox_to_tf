@@ -106,7 +106,7 @@ Therefore, this section describes the contents and structure of [bbox_to_tf.laun
 - bbox_topic_name\
   bbox_topic_name is the name of the BoundingBox topic.
   Specifically, it specifies the name of the topic on which messages of type sobits_interfaces/BoundingBoxes are flying.\
-  This is a custom ROS message created by SOBITS on its own, so it is necessary to have sobits_msgs git clone.\
+  This is a custom ROS message created by SOBITS on its own, so it is necessary to have sobits_interfaces git clone.\
   However, it should already be git cloned in the install.sh of the packages that depend on this package.
 
 - cloud_topic_name\
