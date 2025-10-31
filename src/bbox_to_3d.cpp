@@ -16,6 +16,7 @@
 #include <sensor_msgs/msg/image.hpp>
 
 #include <pcl/common/common.h>
+#include <pcl/common/impl/centroid.hpp>
 #include <pcl/filters/crop_box.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
