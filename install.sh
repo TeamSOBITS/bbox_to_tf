@@ -9,7 +9,7 @@ DIR=`pwd`
 
 # Clone required packages
 cd ..
-git clone -b feature/humble-devel https://github.com/TeamSOBITS/sobits_interfaces.git
+git clone -b $ROS_DISTRO-devel https://github.com/TeamSOBITS/sobits_interfaces.git
 
 # Install common dependencies
 python3 -m pip install -U pip
