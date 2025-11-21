@@ -464,10 +464,10 @@ class BboxTo3D : public rclcpp::Node {
     void callback_runctr(const std::shared_ptr<std_srvs::srv::SetBool::Request> req, std::shared_ptr<std_srvs::srv::SetBool::Response> res) {
       if (req->data) {
         rmw_qos_profile_t sensor_qos_profile = rmw_qos_profile_sensor_data;
-        if (!sub_bboxes_) sub_bboxes_ = std::make_shared<message_filters::Subscriber<vision_msgs::msg::Detection2DArray>>(this, bbox_topic_name_);
+        if (!sub_bboxes_) sub_bboxes_ = std::make_shared<message_filters::Subscriber<vision_msgs::msg::Detection2DArray>>(this, bbox_topic_name_, sensor_qos_profile);
         if (!sub_pcl_)    sub_pcl_    = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, cloud_topic_name_, sensor_qos_profile);
-        if (!sub_img_)    sub_img_    = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, depth_topic_name_);
-        if (!sub_info_)   sub_info_   = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>(this, info_topic_name_);
+        if (!sub_img_)    sub_img_    = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, depth_topic_name_, sensor_qos_profile);
+        if (!sub_info_)   sub_info_   = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>(this, info_topic_name_, sensor_qos_profile);
 
         if ((positioning_detection_mode_ == "point_cloud") || (positioning_detection_mode_ == "fast_point")) {
           if (!sync_point_cloud_) sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<BBoxesCloudSyncPolicy>>(BBoxesCloudSyncPolicy(200), *sub_bboxes_, *sub_pcl_, *sub_info_);

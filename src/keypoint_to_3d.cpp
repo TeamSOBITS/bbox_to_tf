@@ -219,10 +219,10 @@ class KeyTo3D : public rclcpp::Node {
     void callback_runctr(const std::shared_ptr<std_srvs::srv::SetBool::Request> req, std::shared_ptr<std_srvs::srv::SetBool::Response> res) {
       if (req->data) {
         rmw_qos_profile_t sensor_qos_profile = rmw_qos_profile_sensor_data;
-        if (!sub_key_2d_array_) sub_key_2d_array_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::KeyPointArray>>(this, keypoint_2d_topic_name_);
+        if (!sub_key_2d_array_) sub_key_2d_array_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::KeyPointArray>>(this, keypoint_2d_topic_name_, sensor_qos_profile);
         if (!sub_pcl_)          sub_pcl_          = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, cloud_topic_name_, sensor_qos_profile);
-        if (!sub_img_)          sub_img_          = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, depth_topic_name_);
-        if (!sub_info_)         sub_info_         = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>(this, info_topic_name_);
+        if (!sub_img_)          sub_img_          = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, depth_topic_name_, sensor_qos_profile);
+        if (!sub_info_)         sub_info_         = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>(this, info_topic_name_, sensor_qos_profile);
 
         if (positioning_detection_mode_ == "point_cloud") {
           if (!sync_point_cloud_) sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<KeysCloudSyncPolicy>>(KeysCloudSyncPolicy(200), *sub_key_2d_array_, *sub_pcl_, *sub_info_);
