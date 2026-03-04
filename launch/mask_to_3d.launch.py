@@ -18,7 +18,7 @@ def generate_launch_description():
     )
     params_file = LaunchConfiguration('params_file')
 
-    robot_name = 'sobit_home'
+    robot_name = ''
 
     # Composable Node Container
     container = ComposableNodeContainer(
