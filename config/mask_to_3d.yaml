@@ -1,0 +1,11 @@
+mask_to_3d:
+  ros__parameters:
+    base_frame_name: "camera_base"
+    mask_topic_name: "/detect_mask_array"
+    cloud_topic_name: "/point_cloud"
+    info_topic_name: "/camera_info"
+    execute_default: true
+    cluster_tolerance: 0.05
+    min_cluster_size: 100
+    max_cluster_size: 20000
+    noise_point_cloud_range: 0.01
