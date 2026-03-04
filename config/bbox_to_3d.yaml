@@ -1,0 +1,21 @@
+/**/bbox_to_3d:
+  ros__parameters:
+    base_frame_name: "base_footprint"
+    bbox_topic_name: "/bbox"
+    cloud_topic_name: "/point_cloud"
+    depth_image_topic_name: "/depth_image"
+    info_topic_name: "/camera_info"
+
+    # Options
+    enable_id: false
+    positioning_detection_mode: "point_cloud" # Options: "point_cloud", "fast_point", "depth_image"
+    
+    # Point Cloud Processing
+    cluster_tolerance: 0.04
+    min_cluster_size: 50
+    max_cluster_size: 20000
+    noise_point_cloud_range: 0.01
+    voxel_leaf_size: 0.01
+
+    debug: false
+    execute_default: true
