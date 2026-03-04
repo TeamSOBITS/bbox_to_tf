@@ -14,6 +14,7 @@
 #include <pcl/point_types.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
+#include <pcl/filters/voxel_grid.h>
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
@@ -53,11 +54,9 @@ private:
   vision_msgs::msg::Detection3D processMaskClustering(
     const sobits_interfaces::msg::DetectMask& mask,
     const std::shared_ptr<sensor_msgs::msg::CameraInfo>& info_msg,
-    const PointCloud::Ptr& point_cloud, 
-    PointCloud::Ptr& point_cloud_mask);
+    PointCloud::Ptr& mask_cloud);
 
   void publishObjectTf(const geometry_msgs::msg::Pose &pose, const std::string &object_id);
-  bool checkNanInf(const PointT& pt) const;
 
   // Variables
   std::shared_ptr<tf2_ros::Buffer> tfBuffer_;
@@ -65,10 +64,15 @@ private:
   std::shared_ptr<tf2_ros::TransformBroadcaster> tfBroadcaster_;
 
   std::string base_frame_name_;
+  std::string mask_topic_;
+  std::string cloud_topic_;
+  std::string info_topic_;
   double cluster_tolerance_;
   int min_cluster_size_;
   int max_cluster_size_;
   double noise_point_cloud_range_;
+  double voxel_leaf_size_;
+  bool debug_;
 
   rclcpp::Publisher<vision_msgs::msg::Detection3DArray>::SharedPtr pub_obj_poses_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr      pub_object_cloud_;
