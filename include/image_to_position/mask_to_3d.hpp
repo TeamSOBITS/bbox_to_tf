@@ -67,11 +67,13 @@ private:
   std::string mask_topic_;
   std::string cloud_topic_;
   std::string info_topic_;
+
   double cluster_tolerance_;
   int min_cluster_size_;
   int max_cluster_size_;
   double noise_point_cloud_range_;
   double voxel_leaf_size_;
+
   bool debug_;
 
   rclcpp::Publisher<vision_msgs::msg::Detection3DArray>::SharedPtr pub_obj_poses_;

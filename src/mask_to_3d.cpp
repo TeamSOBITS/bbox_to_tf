@@ -4,7 +4,7 @@
 #include <pcl_ros/transforms.hpp>
 #include <pcl/common/impl/centroid.hpp>
 #include <pcl/common/common.h>
-#include <pcl/common/point_tests.h> // For pcl::isFinite
+#include <pcl/common/point_tests.h>
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -26,9 +26,9 @@ MaskTo3D::MaskTo3D(const rclcpp::NodeOptions & options)
   max_cluster_size_ = this->declare_parameter("max_cluster_size", 20000);
   noise_point_cloud_range_ = this->declare_parameter("noise_point_cloud_range", 0.01);
   voxel_leaf_size_ = this->declare_parameter("voxel_leaf_size", 0.01);
+
   debug_ = this->declare_parameter("debug", false);
   bool execute_default = this->declare_parameter("execute_default", true);
-
 
   // Param info logging
   RCLCPP_INFO(this->get_logger(), "Parameters:");
@@ -44,7 +44,6 @@ MaskTo3D::MaskTo3D(const rclcpp::NodeOptions & options)
   RCLCPP_INFO(this->get_logger(), "  debug: %s", debug_ ? "true" : "false");
   RCLCPP_INFO(this->get_logger(), "  execute_default: %s", execute_default ? "true" : "false");
 
-  // Modern ROS 2 clock reference
   tfBuffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
   tfListener_ = std::make_shared<tf2_ros::TransformListener>(*tfBuffer_);
   tfBroadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
