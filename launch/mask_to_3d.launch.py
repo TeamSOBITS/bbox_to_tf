@@ -18,6 +18,8 @@ def generate_launch_description():
     )
     params_file = LaunchConfiguration('params_file')
 
+    robot_name = 'sobit_home'
+
     # Composable Node Container
     container = ComposableNodeContainer(
         name='position_container',
@@ -29,6 +31,7 @@ def generate_launch_description():
                 package='image_to_position',
                 plugin='image_to_position::MaskTo3D',
                 name='mask_to_3d',
+                namespace=robot_name,
                 parameters=[params_file],
                 extra_arguments=[{'use_intra_process_comms': True}]
             ),
