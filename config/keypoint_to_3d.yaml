@@ -1,0 +1,17 @@
+/**/keypoint_to_3d:
+  ros__parameters:
+    base_frame_name: "base_footprint"
+    keypoint_topic_name: "/keypoints"
+    cloud_topic_name: "/point_cloud"
+    depth_image_topic_name: "/depth_image"
+    info_topic_name: "/camera_info"
+
+    # Options
+    positioning_detection_mode: "point_cloud" # Options: "point_cloud", "fast_point", "depth_image"
+    enable_id: false
+    
+    # Point Cloud Processing
+    keypoint_patch_size: 5
+
+    debug: false
+    execute_default: true
