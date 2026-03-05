@@ -85,6 +85,7 @@ private:
   std::string generateObjectId(const std::string& base_id, size_t index) const;
   geometry_msgs::msg::Quaternion get_quat_from_euler(const geometry_msgs::msg::Point& rpy);
   void publishObjectTf(const geometry_msgs::msg::Pose &pose, const std::string &object_id);
+  bool isRealisticPoint(const pcl::PointXYZ& pt) const;
 
   // Variables
   std::shared_ptr<tf2_ros::Buffer> tfBuffer_;
@@ -103,6 +104,9 @@ private:
   double noise_point_cloud_range_;
   std::string positioning_detection_mode_;
   double voxel_leaf_size_;
+
+  double min_realistic_depth_;
+  double max_realistic_depth_;
 
   bool enable_id_;
   bool debug_;

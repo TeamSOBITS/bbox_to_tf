@@ -31,6 +31,9 @@ BboxTo3D::BboxTo3D(const rclcpp::NodeOptions & options)
   positioning_detection_mode_ = this->declare_parameter("positioning_detection_mode", "point_cloud"); // "point_cloud", "depth_image", "fast_point"
   voxel_leaf_size_ = this->declare_parameter("voxel_leaf_size", 0.01);
 
+  min_realistic_depth_ = this->declare_parameter("min_realistic_depth", 0.01);
+  max_realistic_depth_ = this->declare_parameter("max_realistic_depth", 50.0);
+
   enable_id_ = this->declare_parameter("enable_id", false);
   debug_ = this->declare_parameter("debug", false);
   bool execute_default = this->declare_parameter("execute_default", true);
@@ -48,6 +51,8 @@ BboxTo3D::BboxTo3D(const rclcpp::NodeOptions & options)
   RCLCPP_INFO(this->get_logger(), "  noise_point_cloud_range: %f", noise_point_cloud_range_);
   RCLCPP_INFO(this->get_logger(), "  positioning_detection_mode: %s", positioning_detection_mode_.c_str());
   RCLCPP_INFO(this->get_logger(), "  voxel_leaf_size: %f", voxel_leaf_size_);
+  RCLCPP_INFO(this->get_logger(), "  min_realistic_depth: %f", min_realistic_depth_);
+  RCLCPP_INFO(this->get_logger(), "  max_realistic_depth: %f", max_realistic_depth_);
   RCLCPP_INFO(this->get_logger(), "  enable_id: %s", enable_id_ ? "true" : "false");
   RCLCPP_INFO(this->get_logger(), "  debug: %s", debug_ ? "true" : "false");
   RCLCPP_INFO(this->get_logger(), "  execute_default: %s", execute_default ? "true" : "false");
@@ -73,6 +78,13 @@ BboxTo3D::BboxTo3D(const rclcpp::NodeOptions & options)
   auto response = std::make_shared<std_srvs::srv::SetBool::Response>();
   request->data = execute_default;
   callback_runctr(request, response);
+}
+
+bool BboxTo3D::isRealisticPoint(const pcl::PointXYZ& pt) const {
+  return pcl::isFinite(pt) && 
+         pt.z > min_realistic_depth_ && pt.z < max_realistic_depth_ && 
+         std::abs(pt.x) < max_realistic_depth_ && 
+         std::abs(pt.y) < max_realistic_depth_;
 }
 
 std::string BboxTo3D::generateObjectId(const std::string& base_id, size_t index) const {
@@ -116,8 +128,9 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxClustering(
   point_cloud_bbox_optical->header.frame_id = cloud_src_optical->header.frame_id;
 
   if ((0 <= center_index) && (center_index < static_cast<int>(cloud_src_optical->points.size()))) {
-    if (pcl::isFinite(cloud_src_optical->points[center_index])) {
-      point_cloud_bbox_optical->points.push_back(cloud_src_optical->points[center_index]);
+    const auto& pt = cloud_src_optical->points[center_index];
+    if (isRealisticPoint(pt)) {
+      point_cloud_bbox_optical->points.push_back(pt);
     } else return object_pose;
   } else return object_pose;
 
@@ -147,8 +160,9 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxClustering(
         int pt_index = info_msg->width * h + w;
 
         if (pt_index >= 0 && pt_index < static_cast<int>(cloud_src_optical->points.size())) {
-          if (pcl::isFinite(cloud_src_optical->points[pt_index])) {
-            point_cloud_bbox_optical->points.push_back(cloud_src_optical->points[pt_index]);
+          const auto& pt = cloud_src_optical->points[pt_index];
+          if (isRealisticPoint(pt)) {
+            point_cloud_bbox_optical->points.push_back(pt);
           }
         }
       }
@@ -156,6 +170,10 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxClustering(
   }
 
   if (point_cloud_bbox_optical->points.empty()) return object_pose;
+
+  point_cloud_bbox_optical->width = point_cloud_bbox_optical->points.size();
+  point_cloud_bbox_optical->height = 1;
+  point_cloud_bbox_optical->is_dense = true;
 
   // Transform only the extracted optical cloud to base footprint
   pcl_ros::transformPointCloud(*point_cloud_bbox_optical, *point_cloud_bbox_base, transform);
@@ -207,7 +225,10 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxClustering(
     }
   }
 
-  // Assign the best cluster to point_cloud_bbox_base for visualization
+  best_cluster->width = best_cluster->points.size();
+  best_cluster->height = 1;
+  best_cluster->is_dense = true;
+
   *point_cloud_bbox_base = *best_cluster;
 
   pcl::CropBox<PointT> cropBox;
@@ -280,8 +301,9 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxFastShot(
   single_pt_optical->header.frame_id = cloud_src_optical->header.frame_id;
 
   if ((0 <= center_index) && (center_index < static_cast<int>(cloud_src_optical->points.size()))) {
-    if (pcl::isFinite(cloud_src_optical->points[center_index])) {
-      single_pt_optical->points.push_back(cloud_src_optical->points[center_index]);
+    const auto& pt = cloud_src_optical->points[center_index];
+    if (isRealisticPoint(pt)) {
+      single_pt_optical->points.push_back(pt);
       set_tf = true;
     }
   }
@@ -296,8 +318,9 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxFastShot(
       int sub_index = info_msg->width * sub_center_y + sub_center_x;
 
       if (sub_index >= 0 && sub_index < static_cast<int>(cloud_src_optical->points.size())) {
-        if (pcl::isFinite(cloud_src_optical->points[sub_index])) {
-          single_pt_optical->points.push_back(cloud_src_optical->points[sub_index]);
+        const auto& pt = cloud_src_optical->points[sub_index];
+        if (isRealisticPoint(pt)) {
+          single_pt_optical->points.push_back(pt);
           set_tf = true;
         }
       }
@@ -305,6 +328,10 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxFastShot(
   }
 
   if (set_tf) {
+    single_pt_optical->width = single_pt_optical->points.size();
+    single_pt_optical->height = 1;
+    single_pt_optical->is_dense = true;
+
     pcl_ros::transformPointCloud(*single_pt_optical, *point_cloud_bbox_base, transform);
     point_cloud_bbox_base->header.frame_id = base_frame_name_;
 
@@ -353,7 +380,6 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxDepthImage(
   bool set_tf = false;
 
   if ((0 <= center_index) && (center_index < static_cast<int>(img_msg->data.size()))) {
-    set_tf = true;
     if (img_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1) {
       const float* data = reinterpret_cast<const float*>(&img_msg->data[center_index]);
       object_point.z = *data;
@@ -363,7 +389,10 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxDepthImage(
     } else if (img_msg->encoding == sensor_msgs::image_encodings::TYPE_32SC1) {
       const int32_t* data = reinterpret_cast<const int32_t*>(&img_msg->data[center_index]);
       object_point.z = static_cast<float>(*data) / 1000.;
-    } else set_tf = false;
+    }
+    if (std::isfinite(object_point.z) && object_point.z > min_realistic_depth_ && object_point.z < max_realistic_depth_) {
+      set_tf = true;
+    }
   }
 
   if (set_tf) {
@@ -393,6 +422,11 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxDepthImage(
     PointT pt;
     pt.x = obj_pose.position.x; pt.y = obj_pose.position.y; pt.z = obj_pose.position.z;
     point_cloud_bbox->points.push_back(pt);
+    
+    // Set metadata
+    point_cloud_bbox->width = point_cloud_bbox->points.size();
+    point_cloud_bbox->height = 1;
+    point_cloud_bbox->is_dense = true;
 
     vision_msgs::msg::ObjectHypothesisWithPose ohwp;
     ohwp.hypothesis.class_id = bbox_msg->results[0].hypothesis.class_id;
@@ -460,6 +494,10 @@ void BboxTo3D::callback_BBoxPointCloud(
   }
 
   if (debug_) {
+    combined_cloud->width = combined_cloud->points.size();
+    combined_cloud->height = 1;
+    combined_cloud->is_dense = true;
+
     sensor_msgs::msg::PointCloud2 combined_cloud_msg;
     pcl::toROSMsg(*combined_cloud, combined_cloud_msg);
     combined_cloud_msg.header = info_msg->header;
@@ -506,6 +544,10 @@ void BboxTo3D::callback_BBoxDepthImage(
   }
 
   if (debug_) {
+    combined_cloud->width = combined_cloud->points.size();
+    combined_cloud->height = 1;
+    combined_cloud->is_dense = true;
+
     sensor_msgs::msg::PointCloud2 combined_cloud_msg;
     pcl::toROSMsg(*combined_cloud, combined_cloud_msg);
     combined_cloud_msg.header = info_msg->header;
@@ -522,8 +564,8 @@ void BboxTo3D::callback_runctr(const std::shared_ptr<std_srvs::srv::SetBool::Req
     rmw_qos_profile_t sensor_qos = rmw_qos_profile_sensor_data;
     if (!sub_bboxes_) sub_bboxes_ = std::make_shared<message_filters::Subscriber<vision_msgs::msg::Detection2DArray>>(this, bbox_topic_name_);
     if (!sub_pcl_)    sub_pcl_    = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, cloud_topic_name_, sensor_qos);
-    if (!sub_img_)    sub_img_    = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, depth_topic_name_);
-    if (!sub_info_)   sub_info_   = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>(this, info_topic_name_);
+    if (!sub_img_)    sub_img_    = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, depth_topic_name_, sensor_qos);
+    if (!sub_info_)   sub_info_   = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>(this, info_topic_name_, sensor_qos);
 
     if ((positioning_detection_mode_ == "point_cloud") || (positioning_detection_mode_ == "fast_point")) {
       if (!sync_point_cloud_) sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<BBoxesCloudSyncPolicy>>(BBoxesCloudSyncPolicy(200), *sub_bboxes_, *sub_pcl_, *sub_info_);
