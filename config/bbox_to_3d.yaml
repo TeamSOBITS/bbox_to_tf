@@ -12,10 +12,13 @@
     
     # Point Cloud Processing
     cluster_tolerance: 0.04
-    min_cluster_size: 50
-    max_cluster_size: 20000
+    min_cluster_size: 5
+    max_cluster_size: 50000
     noise_point_cloud_range: 0.01
-    voxel_leaf_size: 0.01
+    voxel_leaf_size: 0.025
 
-    debug: false
+    min_realistic_depth: 0.05
+    max_realistic_depth: 5.0
+
+    debug: true
     execute_default: true
