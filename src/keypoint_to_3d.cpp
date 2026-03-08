@@ -15,51 +15,158 @@ namespace image_to_position
 {
 
 KeyTo3D::KeyTo3D(const rclcpp::NodeOptions & options)
-: Node("key_to_3d", options)
+: LifecycleNode("key_to_3d", options)
 {
-  base_frame_name_ = this->declare_parameter("base_frame_name", "base_footprint");
-  keypoint_2d_topic_name_ = this->declare_parameter("keypoints_topic_name", "pose_array");
-  cloud_topic_name_ = this->declare_parameter("cloud_topic_name", "dummy_pointcloud");
-  depth_topic_name_ = this->declare_parameter("depth_image_topic_name", "dummy_image");
-  info_topic_name_ = this->declare_parameter("info_topic_name", "dummy_info");
+  this->declare_parameter("base_frame_name", "base_footprint");
+  this->declare_parameter("keypoints_topic_name", "pose_array");
+  this->declare_parameter("cloud_topic_name", "dummy_pointcloud");
+  this->declare_parameter("depth_image_topic_name", "dummy_image");
+  this->declare_parameter("info_topic_name", "dummy_info");
 
-  positioning_detection_mode_ = this->declare_parameter("positioning_detection_mode", "point_cloud");
-  keypoint_patch_size_ = this->declare_parameter("keypoint_patch_size", 5);
+  this->declare_parameter("x_min", -10.0);
+  this->declare_parameter("x_max", 10.0);
+  this->declare_parameter("y_min", -10.0);
+  this->declare_parameter("y_max", 10.0);
+  this->declare_parameter("z_min", -10.0);
+  this->declare_parameter("z_max", 10.0);
 
-  enable_id_ = this->declare_parameter("enable_id", false);
-  debug_ = this->declare_parameter("publish_debug_cloud", true);
-  bool execute_default = this->declare_parameter("execute_default", true);
+  this->declare_parameter("positioning_detection_mode", "point_cloud");
+  this->declare_parameter("keypoint_patch_size", 5);
 
-  // Param info logging
-  RCLCPP_INFO(this->get_logger(), "Parameters:");
-  RCLCPP_INFO(this->get_logger(), "  base_frame_name: %s", base_frame_name_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  keypoints topic: %s", keypoint_2d_topic_name_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  cloud topic: %s", cloud_topic_name_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  depth topic: %s", depth_topic_name_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  info topic: %s", info_topic_name_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  keypoint_patch_size: %d", keypoint_patch_size_);
-  RCLCPP_INFO(this->get_logger(), "  positioning_detection_mode: %s", positioning_detection_mode_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  enable_id: %s", enable_id_ ? "true" : "false");
-  RCLCPP_INFO(this->get_logger(), "  debug: %s", debug_ ? "true" : "false");
-  RCLCPP_INFO(this->get_logger(), "  execute_default: %s", execute_default ? "true" : "false");
+  this->declare_parameter("enable_id", false);
+}
+
+CallbackReturn KeyTo3D::on_configure(const rclcpp_lifecycle::State &)
+{
+  base_frame_name_ = this->get_parameter("base_frame_name").as_string();
+  keypoint_2d_topic_name_ = this->get_parameter("keypoints_topic_name").as_string();
+  cloud_topic_name_ = this->get_parameter("cloud_topic_name").as_string();
+  depth_topic_name_ = this->get_parameter("depth_image_topic_name").as_string();
+  info_topic_name_ = this->get_parameter("info_topic_name").as_string();
+
+  x_min_ = this->get_parameter("x_min").as_double();
+  x_max_ = this->get_parameter("x_max").as_double();
+  y_min_ = this->get_parameter("y_min").as_double();
+  y_max_ = this->get_parameter("y_max").as_double();
+  z_min_ = this->get_parameter("z_min").as_double();
+  z_max_ = this->get_parameter("z_max").as_double();
+
+  positioning_detection_mode_ = this->get_parameter("positioning_detection_mode").as_string();
+  keypoint_patch_size_ = this->get_parameter("keypoint_patch_size").as_int();
+
+  enable_id_ = this->get_parameter("enable_id").as_bool();
+
+  RCLCPP_INFO(this->get_logger(), "Configuring KeyTo3D Node...");
+
+  RCLCPP_INFO(this->get_logger(), "Base Frame Name: %s", base_frame_name_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Keypoints Topic Name: %s", keypoint_2d_topic_name_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Cloud Topic Name: %s", cloud_topic_name_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Depth Image Topic Name: %s", depth_topic_name_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Camera Info Topic Name: %s", info_topic_name_.c_str());
+
+  RCLCPP_INFO(this->get_logger(), "Clipping Bounds:");
+  RCLCPP_INFO(this->get_logger(), "  x: [%f, %f]", x_min_, x_max_);
+  RCLCPP_INFO(this->get_logger(), "  y: [%f, %f]", y_min_, y_max_);
+  RCLCPP_INFO(this->get_logger(), "  z: [%f, %f]", z_min_, z_max_);
+
+  RCLCPP_INFO(this->get_logger(), "Positioning Detection Mode: %s", positioning_detection_mode_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Keypoint Patch Size: %d", keypoint_patch_size_);
+
+  RCLCPP_INFO(this->get_logger(), "Enable ID: %s", enable_id_ ? "true" : "false");
 
   tfBuffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
   tfListener_ = std::make_shared<tf2_ros::TransformListener>(*tfBuffer_);
   tfBroadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
   pub_key_3d_ = this->create_publisher<sobits_interfaces::msg::KeyPointArray>("keypoint_3d_array", 5);
-  
-  if (debug_) {
-    pub_object_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("keypoint_3d_cloud", 1);
+  pub_debug_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("keypoint_3d_cloud", 1);
+
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn KeyTo3D::on_activate(const rclcpp_lifecycle::State &)
+{
+  RCLCPP_INFO(this->get_logger(), "Activating KeyTo3D Node...");
+
+  pub_key_3d_->on_activate();
+  pub_debug_cloud_->on_activate();
+
+  rmw_qos_profile_t sensor_qos = rmw_qos_profile_sensor_data;
+
+  // Enable IPC explicitly for the subscriber
+  rclcpp::SubscriptionOptions sub_options;
+  sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
+
+  sub_key_2d_array_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::KeyPointArray, rclcpp_lifecycle::LifecycleNode>>(this, keypoint_2d_topic_name_);
+  sub_pcl_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2, rclcpp_lifecycle::LifecycleNode>>(this, cloud_topic_name_, sensor_qos);
+  sub_img_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image, rclcpp_lifecycle::LifecycleNode>>(this, depth_topic_name_, sensor_qos);
+  sub_info_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo, rclcpp_lifecycle::LifecycleNode>>(this, info_topic_name_, sensor_qos);
+
+  if (positioning_detection_mode_ == "point_cloud") {
+    sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<KeysCloudSyncPolicy>>(
+      KeysCloudSyncPolicy(200), *sub_key_2d_array_, *sub_pcl_, *sub_info_);
+    sync_point_cloud_->registerCallback(&KeyTo3D::callback_KeyPointCloud, this);
+  } else if (positioning_detection_mode_ == "depth_image") {
+    sync_depth_image_ = std::make_shared<message_filters::Synchronizer<KeysDepthSyncPolicy>>(
+      KeysDepthSyncPolicy(200), *sub_key_2d_array_, *sub_img_, *sub_info_);
+    sync_depth_image_->registerCallback(&KeyTo3D::callback_KeyDepthImage, this);
+  } else {
+    RCLCPP_ERROR(this->get_logger(), "Invalid positioning_detection_mode: %s", positioning_detection_mode_.c_str());
+    return CallbackReturn::FAILURE;
   }
 
-  run_ctr_srv_ = this->create_service<std_srvs::srv::SetBool>(
-    "keypoints/run_ctr", std::bind(&KeyTo3D::callback_runctr, this, std::placeholders::_1, std::placeholders::_2));
+  return CallbackReturn::SUCCESS;
+}
 
-  auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
-  auto response = std::make_shared<std_srvs::srv::SetBool::Response>();
-  request->data = execute_default;
-  callback_runctr(request, response);
+CallbackReturn KeyTo3D::on_deactivate(const rclcpp_lifecycle::State &)
+{
+  RCLCPP_INFO(this->get_logger(), "Deactivating KeyTo3D Node.");
+
+  pub_key_3d_->on_deactivate();
+  pub_debug_cloud_->on_deactivate();
+
+  sync_point_cloud_.reset();
+  sync_depth_image_.reset();
+  sub_key_2d_array_.reset();
+  sub_pcl_.reset();
+  sub_img_.reset();
+  sub_info_.reset();
+
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn KeyTo3D::on_cleanup(const rclcpp_lifecycle::State &)
+{
+  RCLCPP_INFO(this->get_logger(), "Cleaning up KeyTo3D Node.");
+  pub_key_3d_.reset();
+  pub_debug_cloud_.reset();
+  tfBuffer_.reset();
+  tfListener_.reset();
+  tfBroadcaster_.reset();
+
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn KeyTo3D::on_shutdown(const rclcpp_lifecycle::State &)
+{
+  RCLCPP_INFO(this->get_logger(), "Shutting down KeyTo3D Node.");
+  sync_point_cloud_.reset();
+  sync_depth_image_.reset();
+  sub_key_2d_array_.reset();
+  sub_pcl_.reset();
+  sub_img_.reset();
+  sub_info_.reset();
+  pub_key_3d_.reset();
+  pub_debug_cloud_.reset();
+
+  return CallbackReturn::SUCCESS;
+}
+
+bool KeyTo3D::isRealisticPoint(const pcl::PointXYZ& pt) const {
+  return pcl::isFinite(pt) && 
+         pt.x >= x_min_ && pt.x <= x_max_ && 
+         pt.y >= y_min_ && pt.y <= y_max_ && 
+         pt.z >= z_min_ && pt.z <= z_max_;
 }
 
 std::string KeyTo3D::generateObjectId(const std::string& base_id, size_t index) const {
@@ -124,7 +231,6 @@ void KeyTo3D::processKeysTo3D(
 
       std::vector<PointT> valid_points;
 
-      // Extract valid points from either PointCloud or DepthImage
       if (positioning_detection_mode_ == "point_cloud" && cloud_src_optical) {
         for (int dy = -patch_radius; dy <= patch_radius; ++dy) {
           for (int dx = -patch_radius; dx <= patch_radius; ++dx) {
@@ -132,8 +238,11 @@ void KeyTo3D::processKeysTo3D(
             int ny = point_y + dy;
             if (nx >= 0 && nx < static_cast<int>(info_msg->width) && ny >= 0 && ny < static_cast<int>(info_msg->height)) {
               int n_index = ny * info_msg->width + nx;
-              if (n_index < static_cast<int>(cloud_src_optical->points.size()) && pcl::isFinite(cloud_src_optical->points[n_index])) {
-                valid_points.push_back(cloud_src_optical->points[n_index]);
+              if (n_index < static_cast<int>(cloud_src_optical->points.size())) {
+                const auto& pt = cloud_src_optical->points[n_index];
+                if (isRealisticPoint(pt)) {
+                  valid_points.push_back(pt);
+                }
               }
             }
           }
@@ -165,23 +274,27 @@ void KeyTo3D::processKeysTo3D(
               } else if (img_msg->encoding == sensor_msgs::image_encodings::TYPE_32SC1) {
                 d = static_cast<float>(*reinterpret_cast<const int32_t*>(&img_msg->data[n_index])) / 1000.0f;
                 if (d > 0.01) valid = true;
+              } else {
+                RCLCPP_ERROR(this->get_logger(), "Unsupported image encoding: %s", img_msg->encoding.c_str());
+                return;
               }
 
               if (valid) {
-                PointT pt;
-                pt.z = d;
-                pt.x = (nx - cx) * d / fx;
-                pt.y = (ny - cy) * d / fy;
-                valid_points.push_back(pt);
+                PointT pt_check;
+                pt_check.z = d;
+                pt_check.x = (nx - cx) * d / fx;
+                pt_check.y = (ny - cy) * d / fy;
+                if (isRealisticPoint(pt_check)) {
+                  valid_points.push_back(pt_check);
+                }
               }
             }
           }
         }
       }
 
-      // Process collected points to find median
       if (!valid_points.empty()) {
-        if (debug_) {
+        if (pub_debug_cloud_->get_subscription_count() > 0) {
           for (const auto& pt : valid_points) {
             debug_optical_cloud->points.push_back(pt);
           }
@@ -222,8 +335,11 @@ void KeyTo3D::processKeysTo3D(
 
   pub_key_3d_->publish(pose_3d_array);
 
-  // Publish the debug point cloud translated to the base frame
-  if (debug_ && !debug_optical_cloud->points.empty()) {
+  if (pub_debug_cloud_->get_subscription_count() > 0 && !debug_optical_cloud->points.empty()) {
+    debug_optical_cloud->width = debug_optical_cloud->points.size();
+    debug_optical_cloud->height = 1;
+    debug_optical_cloud->is_dense = true;
+
     PointCloud::Ptr debug_base_cloud(new PointCloud());
     pcl_ros::transformPointCloud(*debug_optical_cloud, *debug_base_cloud, transform);
     
@@ -231,7 +347,7 @@ void KeyTo3D::processKeysTo3D(
     pcl::toROSMsg(*debug_base_cloud, debug_cloud_msg);
     debug_cloud_msg.header.frame_id = base_frame_name_;
     debug_cloud_msg.header.stamp = info_msg->header.stamp;
-    pub_object_cloud_->publish(debug_cloud_msg);
+    pub_debug_cloud_->publish(debug_cloud_msg);
   }
 }
 
@@ -276,45 +392,6 @@ void KeyTo3D::callback_KeyDepthImage(
   if (positioning_detection_mode_ == "depth_image") {
     processKeysTo3D(pose_2d_array_msg, info_msg, nullptr, img_msg, transformStamped);
   }
-}
-
-void KeyTo3D::callback_runctr(const std::shared_ptr<std_srvs::srv::SetBool::Request> req, std::shared_ptr<std_srvs::srv::SetBool::Response> res) {
-  if (req->data) {
-    rmw_qos_profile_t sensor_qos = rmw_qos_profile_sensor_data;
-    if (!sub_key_2d_array_) sub_key_2d_array_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::KeyPointArray>>(this, keypoint_2d_topic_name_);
-    if (!sub_pcl_)          sub_pcl_          = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, cloud_topic_name_, sensor_qos);
-    if (!sub_img_)          sub_img_          = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, depth_topic_name_);
-    if (!sub_info_)         sub_info_         = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>(this, info_topic_name_);
-
-    if (positioning_detection_mode_ == "point_cloud") {
-      if (!sync_point_cloud_) sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<KeysCloudSyncPolicy>>(KeysCloudSyncPolicy(200), *sub_key_2d_array_, *sub_pcl_, *sub_info_);
-      sync_point_cloud_->registerCallback(&KeyTo3D::callback_KeyPointCloud, this);
-    } else if (positioning_detection_mode_ == "depth_image") {
-      if (!sync_depth_image_) sync_depth_image_ = std::make_shared<message_filters::Synchronizer<KeysDepthSyncPolicy>>(KeysDepthSyncPolicy(200), *sub_key_2d_array_, *sub_img_, *sub_info_);
-      sync_depth_image_->registerCallback(&KeyTo3D::callback_KeyDepthImage, this);
-    }
-
-  } else {
-    if (sync_point_cloud_) sync_point_cloud_.reset();
-    if (sync_depth_image_) sync_depth_image_.reset();
-    if (sub_key_2d_array_) {
-      sub_key_2d_array_->unsubscribe();
-      sub_key_2d_array_ = nullptr;
-    }
-    if (sub_pcl_) {
-      sub_pcl_->unsubscribe();
-      sub_pcl_ = nullptr;
-    }
-    if (sub_img_) {
-      sub_img_->unsubscribe();
-      sub_img_ = nullptr;
-    }
-    if (sub_info_) {
-      sub_info_->unsubscribe();
-      sub_info_ = nullptr;
-    }
-  }
-  res->success = true;
 }
 
 }  // namespace image_to_position
