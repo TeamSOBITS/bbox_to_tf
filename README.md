@@ -8,7 +8,7 @@
 [![Issues][issues-shield]][issues-url]
 [![License][license-shield]][license-url]
 
-# image_to_position
+# Image to Position
 
 ## 概要
 
@@ -86,48 +86,48 @@ ros2 lifecycle set /bbox_to_3d activate
 
 
 ### パラメータ設定 (Spatial Clipping)
-点群処理の最適化のため、空間的なクリッピング境界を設定できます。[config](./config/)フォルダにあるyamlファイルを編集してください。
+点群処理の最適化のため、PCLの設定を行います。[config](./config/)フォルダにあるyamlファイルを編集してください。
 
 
 - `base_frame_name`:
-  base_frame_nameは3次元化する上で何を基準フレームとして座標を得るかです．\
+  base_frame_nameは3次\元化する上で何を基準フレームとして座標を得るかです．\
   ロボットの座標を基準にする場合，base_footprintとなる．\
   ロボットの足元の中心を原点(0,0,0)として各認識した物体の3次元座標を生成します．
 
-- `bbox_topic_name`:
+- `bbox_topic_name`:\
   bbox_topic_nameはBoundingBoxのトピック名です．
   具体的には，sobits_interfaces/BoundingBoxes型のメッセージが飛んでいるトピック名を指定する．\
   これはSOBITSが独自に作ったカスタムROSメッセージであるためsobits_interfacesをgit cloneしてある必用があります．\
   しかし，このパッケージに依存しているパッケージのinstall.shで既にgit cloneされているはずです．
 
-- `cloud_topic_name`:
+- `cloud_topic_name`:\
   cloud_topic_nameは点群のトピック名です．
   具体的には，sensor_msgs/PointCloud2型のメッセージが飛んでいるトピック名を指定する．\
   BoundingBoxの情報から，その領域に点群を飛ばします．
   そのとき，物体の距離感とともに点群のクラス分けを行い位置を取得します．
 
-- `img_topic_name`:
+- `img_topic_name`:\
   img_topic_nameはこの画像認識をしている画像のトピック名です．\
   具体的には，sensor_msgs/Image型のメッセージが飛んでいるトピック名を指定する．\
   画像と点群の関係を見るために参照している．
 
-- `x_min`, `x_max`, `y_min`, `y_max`, `z_min`, `z_max`:
+- `x_min`, `x_max`, `y_min`, `y_max`, `z_min`, `z_max`:\
   光学フレームにおける有効な空間範囲をメートル単位で指定します。これにより、不要な背景を除去し処理を高速化します。
 
-- `cluster_tolerance`:
+- `cluster_tolerance`:\
   どの程度離れた点群までは同一の物体とみなすかのしきい値です．\
   BoundingBox内に点群を飛ばした場合に，対象物に点群があたり，しきい値いないにある点群を1物体とみなしクラス分けを行います．
   そのため，あまり大きくすると点群1つ1つの探索範囲が広がり処理が遅くなってしまいます．
 
-- `min_clusterSize`:
+- `min_clusterSize`:\
   どの程度の数以下の点群の集まりは対象物の点群から棄却するかのしきい値です．\
   点群をクラス分けした際に，この数以下の点群数だったらノイズとみなし棄却します．
 
-- `max_clusterSize`:
+- `max_clusterSize`:\
   どの程度の数以上の点群の集まりは対象物の点群から棄却するかのしきい値です．\
   点群をクラス分けした際に，この数以上の点群数だったら全く別の対象物(物体だったら床の点群など)を捉えてしまったとみなし棄却します．
 
-- `noise_point_cloud_range`:
+- `noise_point_cloud_range`:\
   対象の物体の点群からノイズ面を除去し，中心座標に近づけるため除去量です．\
   クラス分けした点群から物体を抽出した後，床や背後の壁，左右の壁などx,y,z方向に点群をこの値分，更にカットします．
   こうすることで，より物体の部分のみにかかる点群に絞ることができます．
@@ -136,7 +136,6 @@ ros2 lifecycle set /bbox_to_3d activate
 <p align="right">(<a href="#readme-top">上に戻る</a>)</p>
 
 
-<!-- 参考文献 -->
 ## 参考文献
 
 * [ROS Jazzy](https://docs.ros.org/en/jazzy/index.html)
@@ -159,5 +158,3 @@ ros2 lifecycle set /bbox_to_3d activate
 [issues-url]: https://github.com/TeamSOBITS/image_to_position/issues
 [license-shield]: https://img.shields.io/github/license/TeamSOBITS/image_to_position.svg?style=for-the-badge
 [license-url]: LICENSE
-
-<p align="right">(<a href="#readme-top">上に戻る</a>)</p>

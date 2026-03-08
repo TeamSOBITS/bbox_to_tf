@@ -8,7 +8,7 @@
 [![Issues][issues-shield]][issues-url]
 [![License][license-shield]][license-url]
 
-# image_to_position
+# Image to Position
 
 ## Introduction
 
