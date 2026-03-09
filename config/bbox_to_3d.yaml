@@ -1,9 +1,9 @@
 /**/bbox_to_3d:
   ros__parameters:
-    base_frame_name: "base_footprint"
-    bbox_topic_name: "/bounding_boxes"
+    base_frame_name: "camera_base"
+    bbox_topic_name: "objects_rect"
     cloud_topic_name: "/point_cloud"
-    depth_image_topic_name: "/depth_image"
+    depth_image_topic_name: "/depth_image_raw"
     info_topic_name: "/camera_info"
 
     # Options
@@ -15,12 +15,12 @@
     x_max: 0.5
     y_min: -0.5
     y_max: 0.5
-    z_min: 0.01
-    z_max: 1.5
+    z_min: -0.5
+    z_max: 0.5
 
     # Point Cloud Processing
-    cluster_tolerance: 0.04
-    min_cluster_size: 5
-    max_cluster_size: 50000
+    cluster_tolerance: 0.01
+    min_cluster_size: 200
+    max_cluster_size: 20000
     noise_point_cloud_range: 0.01
     voxel_leaf_size: 0.025

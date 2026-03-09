@@ -1,9 +1,9 @@
 /**/keypoint_to_3d:
   ros__parameters:
-    base_frame_name: "base_footprint"
-    keypoint_topic_name: "/keypoints"
+    base_frame_name: "camera_base"
+    keypoint_topic_name: "keypoints"
     cloud_topic_name: "/point_cloud"
-    depth_image_topic_name: "/depth_image"
+    depth_image_topic_name: "/depth_image_raw"
     info_topic_name: "/camera_info"
 
     # Options
@@ -15,8 +15,8 @@
     x_max: 0.5
     y_min: -0.5
     y_max: 0.5
-    z_min: 0.01
-    z_max: 1.5
+    z_min: -0.5
+    z_max: 0.5
     
     # Point Cloud Processing
     keypoint_patch_size: 5
