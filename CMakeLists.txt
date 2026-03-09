@@ -50,7 +50,7 @@ ament_target_dependencies(keypoint_to_3d_component
   "rclcpp" "rclcpp_lifecycle" "rclcpp_components" "pcl_conversions" "pcl_ros" "tf2_ros"
   "vision_msgs" "sensor_msgs" "geometry_msgs" "std_msgs" "std_srvs" "sobits_interfaces")
 rclcpp_components_register_node(keypoint_to_3d_component
-  PLUGIN "image_to_position::KeyTo3D"
+  PLUGIN "image_to_position::KeypointTo3D"
   EXECUTABLE keypoint_to_3d)
 
 
