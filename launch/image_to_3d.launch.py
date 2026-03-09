@@ -8,14 +8,10 @@ from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 
 def generate_launch_description():
-    mask_pkg_dir = get_package_share_directory('image_to_position')
-    mask_default_params_file = os.path.join(mask_pkg_dir, 'config', 'mask_to_3d.yaml')
-
-    bbox_pkg_dir = get_package_share_directory('image_to_position')
-    bbox_default_params_file = os.path.join(bbox_pkg_dir, 'config', 'bbox_to_3d.yaml')
-
-    keypoint_pkg_dir = get_package_share_directory('image_to_position')
-    keypoint_default_params_file = os.path.join(keypoint_pkg_dir, 'config', 'keypoint_to_3d.yaml')
+    pkg_dir = get_package_share_directory('image_to_position')
+    mask_default_params_file = os.path.join(pkg_dir, 'config', 'mask_to_3d.yaml')
+    bbox_default_params_file = os.path.join(pkg_dir, 'config', 'bbox_to_3d.yaml')
+    keypoint_default_params_file = os.path.join(pkg_dir, 'config', 'keypoint_to_3d.yaml')
 
     mask_params_file = LaunchConfiguration('mask_params_file')
     bbox_params_file = LaunchConfiguration('bbox_params_file')
