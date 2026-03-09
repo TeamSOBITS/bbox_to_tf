@@ -14,8 +14,8 @@
 namespace image_to_position
 {
 
-KeyTo3D::KeyTo3D(const rclcpp::NodeOptions & options)
-: LifecycleNode("key_to_3d", options)
+KeypointTo3D::KeypointTo3D(const rclcpp::NodeOptions & options)
+: LifecycleNode("keypoint_to_3d", options)
 {
   this->declare_parameter("base_frame_name", "base_footprint");
   this->declare_parameter("keypoints_topic_name", "pose_array");
@@ -36,7 +36,7 @@ KeyTo3D::KeyTo3D(const rclcpp::NodeOptions & options)
   this->declare_parameter("enable_id", false);
 }
 
-CallbackReturn KeyTo3D::on_configure(const rclcpp_lifecycle::State &)
+CallbackReturn KeypointTo3D::on_configure(const rclcpp_lifecycle::State &)
 {
   base_frame_name_ = this->get_parameter("base_frame_name").as_string();
   keypoint_2d_topic_name_ = this->get_parameter("keypoints_topic_name").as_string();
@@ -56,7 +56,7 @@ CallbackReturn KeyTo3D::on_configure(const rclcpp_lifecycle::State &)
 
   enable_id_ = this->get_parameter("enable_id").as_bool();
 
-  RCLCPP_INFO(this->get_logger(), "Configuring KeyTo3D Node...");
+  RCLCPP_INFO(this->get_logger(), "Configuring KeypointTo3D Node...");
 
   RCLCPP_INFO(this->get_logger(), "Base Frame Name: %s", base_frame_name_.c_str());
   RCLCPP_INFO(this->get_logger(), "Keypoints Topic Name: %s", keypoint_2d_topic_name_.c_str());
@@ -84,9 +84,9 @@ CallbackReturn KeyTo3D::on_configure(const rclcpp_lifecycle::State &)
   return CallbackReturn::SUCCESS;
 }
 
-CallbackReturn KeyTo3D::on_activate(const rclcpp_lifecycle::State &)
+CallbackReturn KeypointTo3D::on_activate(const rclcpp_lifecycle::State &)
 {
-  RCLCPP_INFO(this->get_logger(), "Activating KeyTo3D Node...");
+  RCLCPP_INFO(this->get_logger(), "Activating KeypointTo3D Node...");
 
   pub_key_3d_->on_activate();
   pub_debug_cloud_->on_activate();
@@ -105,11 +105,11 @@ CallbackReturn KeyTo3D::on_activate(const rclcpp_lifecycle::State &)
   if (positioning_detection_mode_ == "point_cloud") {
     sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<KeysCloudSyncPolicy>>(
       KeysCloudSyncPolicy(200), *sub_key_2d_array_, *sub_pcl_, *sub_info_);
-    sync_point_cloud_->registerCallback(&KeyTo3D::callback_KeyPointCloud, this);
+    sync_point_cloud_->registerCallback(&KeypointTo3D::callback_KeyPointCloud, this);
   } else if (positioning_detection_mode_ == "depth_image") {
     sync_depth_image_ = std::make_shared<message_filters::Synchronizer<KeysDepthSyncPolicy>>(
       KeysDepthSyncPolicy(200), *sub_key_2d_array_, *sub_img_, *sub_info_);
-    sync_depth_image_->registerCallback(&KeyTo3D::callback_KeyDepthImage, this);
+    sync_depth_image_->registerCallback(&KeypointTo3D::callback_KeyDepthImage, this);
   } else {
     RCLCPP_ERROR(this->get_logger(), "Invalid positioning_detection_mode: %s", positioning_detection_mode_.c_str());
     return CallbackReturn::FAILURE;
@@ -118,9 +118,9 @@ CallbackReturn KeyTo3D::on_activate(const rclcpp_lifecycle::State &)
   return CallbackReturn::SUCCESS;
 }
 
-CallbackReturn KeyTo3D::on_deactivate(const rclcpp_lifecycle::State &)
+CallbackReturn KeypointTo3D::on_deactivate(const rclcpp_lifecycle::State &)
 {
-  RCLCPP_INFO(this->get_logger(), "Deactivating KeyTo3D Node.");
+  RCLCPP_INFO(this->get_logger(), "Deactivating KeypointTo3D Node.");
 
   pub_key_3d_->on_deactivate();
   pub_debug_cloud_->on_deactivate();
@@ -135,9 +135,9 @@ CallbackReturn KeyTo3D::on_deactivate(const rclcpp_lifecycle::State &)
   return CallbackReturn::SUCCESS;
 }
 
-CallbackReturn KeyTo3D::on_cleanup(const rclcpp_lifecycle::State &)
+CallbackReturn KeypointTo3D::on_cleanup(const rclcpp_lifecycle::State &)
 {
-  RCLCPP_INFO(this->get_logger(), "Cleaning up KeyTo3D Node.");
+  RCLCPP_INFO(this->get_logger(), "Cleaning up KeypointTo3D Node.");
   pub_key_3d_.reset();
   pub_debug_cloud_.reset();
   tfBuffer_.reset();
@@ -147,9 +147,9 @@ CallbackReturn KeyTo3D::on_cleanup(const rclcpp_lifecycle::State &)
   return CallbackReturn::SUCCESS;
 }
 
-CallbackReturn KeyTo3D::on_shutdown(const rclcpp_lifecycle::State &)
+CallbackReturn KeypointTo3D::on_shutdown(const rclcpp_lifecycle::State &)
 {
-  RCLCPP_INFO(this->get_logger(), "Shutting down KeyTo3D Node.");
+  RCLCPP_INFO(this->get_logger(), "Shutting down KeypointTo3D Node.");
   sync_point_cloud_.reset();
   sync_depth_image_.reset();
   sub_key_2d_array_.reset();
@@ -162,24 +162,24 @@ CallbackReturn KeyTo3D::on_shutdown(const rclcpp_lifecycle::State &)
   return CallbackReturn::SUCCESS;
 }
 
-bool KeyTo3D::isRealisticPoint(const pcl::PointXYZ& pt) const {
+bool KeypointTo3D::isRealisticPoint(const pcl::PointXYZ& pt) const {
   return pcl::isFinite(pt) && 
          pt.x >= x_min_ && pt.x <= x_max_ && 
          pt.y >= y_min_ && pt.y <= y_max_ && 
          pt.z >= z_min_ && pt.z <= z_max_;
 }
 
-std::string KeyTo3D::generateObjectId(const std::string& base_id, size_t index) const {
+std::string KeypointTo3D::generateObjectId(const std::string& base_id, size_t index) const {
   return enable_id_ ? (base_id + "_" + std::to_string(index)) : base_id;
 }
 
-geometry_msgs::msg::Quaternion KeyTo3D::get_quat_from_euler(const geometry_msgs::msg::Point& rpy) {
+geometry_msgs::msg::Quaternion KeypointTo3D::get_quat_from_euler(const geometry_msgs::msg::Point& rpy) {
   tf2::Quaternion tf_quat;
   tf_quat.setRPY(rpy.x, rpy.y, rpy.z);
   return tf2::toMsg(tf_quat);
 }
 
-void KeyTo3D::publishObjectTf(const geometry_msgs::msg::Pose &pose, const std::string &object_id) {
+void KeypointTo3D::publishObjectTf(const geometry_msgs::msg::Pose &pose, const std::string &object_id) {
   geometry_msgs::msg::TransformStamped t;
   t.header.stamp = this->now();
   t.header.frame_id = base_frame_name_;
@@ -191,7 +191,7 @@ void KeyTo3D::publishObjectTf(const geometry_msgs::msg::Pose &pose, const std::s
   tfBroadcaster_->sendTransform(t);
 }
 
-void KeyTo3D::processKeysTo3D(
+void KeypointTo3D::processKeysTo3D(
     const std::shared_ptr<sobits_interfaces::msg::KeyPointArray> pose_2d_array_msg,
     const std::shared_ptr<sensor_msgs::msg::CameraInfo>          info_msg,
     const PointCloud::Ptr& cloud_src_optical, 
@@ -351,7 +351,7 @@ void KeyTo3D::processKeysTo3D(
   }
 }
 
-void KeyTo3D::callback_KeyPointCloud(
+void KeypointTo3D::callback_KeyPointCloud(
     const std::shared_ptr<sobits_interfaces::msg::KeyPointArray> pose_2d_array_msg,
     const std::shared_ptr<sensor_msgs::msg::PointCloud2>         pcl_msg,
     const std::shared_ptr<sensor_msgs::msg::CameraInfo>          info_msg) {
@@ -374,7 +374,7 @@ void KeyTo3D::callback_KeyPointCloud(
   }
 }
 
-void KeyTo3D::callback_KeyDepthImage(
+void KeypointTo3D::callback_KeyDepthImage(
     const std::shared_ptr<sobits_interfaces::msg::KeyPointArray> pose_2d_array_msg,
     const std::shared_ptr<sensor_msgs::msg::Image>               img_msg,
     const std::shared_ptr<sensor_msgs::msg::CameraInfo>          info_msg) {
@@ -397,4 +397,4 @@ void KeyTo3D::callback_KeyDepthImage(
 }  // namespace image_to_position
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(image_to_position::KeyTo3D)
+RCLCPP_COMPONENTS_REGISTER_NODE(image_to_position::KeypointTo3D)
