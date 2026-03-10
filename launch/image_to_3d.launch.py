@@ -2,8 +2,8 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 
@@ -76,6 +76,29 @@ def generate_launch_description():
         output='screen',
     )
 
+    bbox_node_full_path = PythonExpression([
+        "'/' + '", namespace, "' + '/bbox_to_3d' if '", namespace, "' else '/bbox_to_3d'",
+    ])
+    bbox_configure_node = ExecuteProcess(
+        cmd=['ros2', 'lifecycle', 'set', bbox_node_full_path, 'configure'],
+        output='screen'
+    )
+
+    mask_node_full_path = PythonExpression([
+        "'/' + '", namespace, "' + '/mask_to_3d' if '", namespace, "' else '/mask_to_3d'",
+    ])
+    mask_configure_node = ExecuteProcess(
+        cmd=['ros2', 'lifecycle', 'set', mask_node_full_path, 'configure'],
+        output='screen'
+    )
+
+    keypoint_node_full_path = PythonExpression([
+        "'/' + '", namespace, "' + '/keypoint_to_3d' if '", namespace, "' else '/keypoint_to_3d'",
+    ])
+    keypoint_configure_node = ExecuteProcess(
+        cmd=['ros2', 'lifecycle', 'set', keypoint_node_full_path, 'configure'],
+        output='screen'
+    )
 
     return LaunchDescription([
         mask_params_arg,
@@ -83,4 +106,7 @@ def generate_launch_description():
         keypoint_params_arg,
         namespace_cmd,
         container,
+        TimerAction(period=0.5, actions=[bbox_configure_node]),
+        TimerAction(period=0.5, actions=[mask_configure_node]),
+        TimerAction(period=0.5, actions=[keypoint_configure_node]),
     ])

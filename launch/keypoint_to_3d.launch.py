@@ -2,8 +2,8 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 
@@ -43,8 +43,18 @@ def generate_launch_description():
         output='screen',
     )
 
+    node_full_path = PythonExpression([
+        "'/' + '", namespace, "' + '/keypoint_to_3d' if '", namespace, "' else '/keypoint_to_3d'",
+    ])
+
+    configure_node = ExecuteProcess(
+        cmd=['ros2', 'lifecycle', 'set', node_full_path, 'configure'],
+        output='screen'
+    )
+
     return LaunchDescription([
         params_file_arg,
         namespace_cmd,
         container,
+        TimerAction(period=0.5, actions=[configure_node]),
     ])
