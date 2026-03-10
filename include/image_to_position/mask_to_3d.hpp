@@ -1,7 +1,8 @@
-#ifndef IMAGE_TO_POSITION__MASK_TO_3D_HPP_
-#define IMAGE_TO_POSITION__MASK_TO_3D_HPP_
+#pragma once
 
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp_lifecycle/lifecycle_node.hpp>
+#include <rclcpp_lifecycle/lifecycle_publisher.hpp>
 
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
@@ -20,17 +21,23 @@
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <vision_msgs/msg/detection3_d_array.hpp>
 
-#include <std_srvs/srv/set_bool.hpp>
-
 #include "sobits_interfaces/msg/detect_mask_array.hpp"
 
 namespace image_to_position
 {
 
-class MaskTo3D : public rclcpp::Node
+using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
+
+class MaskTo3D : public rclcpp_lifecycle::LifecycleNode
 {
 public:
   explicit MaskTo3D(const rclcpp::NodeOptions & options);
+
+  CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_activate(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_deactivate(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_cleanup(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_shutdown(const rclcpp_lifecycle::State & previous_state) override;
 
 private:
   using PointT = pcl::PointXYZ;
@@ -46,10 +53,6 @@ private:
     const std::shared_ptr<sensor_msgs::msg::PointCloud2> pcl_msg,
     const std::shared_ptr<sensor_msgs::msg::CameraInfo> info_msg);
 
-  void callback_runctr(
-    const std::shared_ptr<std_srvs::srv::SetBool::Request> req, 
-    std::shared_ptr<std_srvs::srv::SetBool::Response> res);
-
   // Processing Methods
   vision_msgs::msg::Detection3D processMaskClustering(
     const sobits_interfaces::msg::DetectMask& mask,
@@ -57,6 +60,7 @@ private:
     PointCloud::Ptr& mask_cloud);
 
   void publishObjectTf(const geometry_msgs::msg::Pose &pose, const std::string &object_id);
+  bool isRealisticPoint(const pcl::PointXYZ& pt) const;
 
   // Variables
   std::shared_ptr<tf2_ros::Buffer> tfBuffer_;
@@ -64,9 +68,13 @@ private:
   std::shared_ptr<tf2_ros::TransformBroadcaster> tfBroadcaster_;
 
   std::string base_frame_name_;
-  std::string mask_topic_;
-  std::string cloud_topic_;
-  std::string info_topic_;
+  std::string mask_topic_name_;
+  std::string cloud_topic_name_;
+  std::string info_topic_name_;
+
+  double x_min_, x_max_;
+  double y_min_, y_max_;
+  double z_min_, z_max_;
 
   double cluster_tolerance_;
   int min_cluster_size_;
@@ -74,21 +82,18 @@ private:
   double noise_point_cloud_range_;
   double voxel_leaf_size_;
 
-  bool debug_;
+  // bool enable_id_;
 
-  rclcpp::Publisher<vision_msgs::msg::Detection3DArray>::SharedPtr pub_obj_poses_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr      pub_object_cloud_;
-  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr               run_ctr_srv_;
+  std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<vision_msgs::msg::Detection3DArray>> pub_obj_poses_;
+  std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::PointCloud2>>      pub_debug_cloud_;
 
-  std::shared_ptr<message_filters::Subscriber<sobits_interfaces::msg::DetectMaskArray>> sub_masks_;
-  std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>           sub_pcl_;
-  std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>            sub_info_;
-  std::shared_ptr<message_filters::Synchronizer<MaskCloudSyncPolicy>>                   sync_point_cloud_;
+  std::shared_ptr<message_filters::Subscriber<sobits_interfaces::msg::DetectMaskArray, rclcpp_lifecycle::LifecycleNode>> sub_masks_;
+  std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::PointCloud2, rclcpp_lifecycle::LifecycleNode>>           sub_pcl_;
+  std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::CameraInfo, rclcpp_lifecycle::LifecycleNode>>            sub_info_;
+  std::shared_ptr<message_filters::Synchronizer<MaskCloudSyncPolicy>>                                                    sync_point_cloud_;
 
   pcl::search::KdTree<PointT>::Ptr kdtree_;
   pcl::EuclideanClusterExtraction<PointT> euclid_clustering_;
 };
 
 }  // namespace image_to_position
-
-#endif  // IMAGE_TO_POSITION__MASK_TO_3D_HPP_

@@ -13,36 +13,71 @@ namespace image_to_position
 {
 
 MaskTo3D::MaskTo3D(const rclcpp::NodeOptions & options)
-: Node("mask_to_3d", options)
+: LifecycleNode("mask_to_3d", options)
 {
-  // Declare parameters
-  base_frame_name_ = this->declare_parameter("base_frame_name", "base_footprint");
-  mask_topic_ = this->declare_parameter("mask_topic_name", "/masks_array");
-  cloud_topic_ = this->declare_parameter("cloud_topic_name", "/point_cloud");
-  info_topic_ = this->declare_parameter("info_topic_name", "/camera_info");
+  // Declare parameters in the constructor
+  this->declare_parameter("base_frame_name", "base_footprint");
+  this->declare_parameter("mask_topic_name", "/masks_array");
+  this->declare_parameter("cloud_topic_name", "/point_cloud");
+  this->declare_parameter("info_topic_name", "/camera_info");
 
-  cluster_tolerance_ = this->declare_parameter("cluster_tolerance", 0.05);
-  min_cluster_size_ = this->declare_parameter("min_cluster_size", 50);
-  max_cluster_size_ = this->declare_parameter("max_cluster_size", 20000);
-  noise_point_cloud_range_ = this->declare_parameter("noise_point_cloud_range", 0.01);
-  voxel_leaf_size_ = this->declare_parameter("voxel_leaf_size", 0.01);
+  this->declare_parameter("x_min", -10.0);
+  this->declare_parameter("x_max", 10.0);
+  this->declare_parameter("y_min", -10.0);
+  this->declare_parameter("y_max", 10.0);
+  this->declare_parameter("z_min", -10.0);
+  this->declare_parameter("z_max", 10.0);
 
-  debug_ = this->declare_parameter("debug", false);
-  bool execute_default = this->declare_parameter("execute_default", true);
+  this->declare_parameter("cluster_tolerance", 0.05);
+  this->declare_parameter("min_cluster_size", 50);
+  this->declare_parameter("max_cluster_size", 20000);
+  this->declare_parameter("noise_point_cloud_range", 0.01);
+  this->declare_parameter("voxel_leaf_size", 0.01);
 
-  // Param info logging
-  RCLCPP_INFO(this->get_logger(), "Parameters:");
-  RCLCPP_INFO(this->get_logger(), "  base_frame_name: %s", base_frame_name_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  mask topic: %s", mask_topic_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  cloud topic: %s", cloud_topic_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  info topic: %s", info_topic_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  cluster_tolerance: %f", cluster_tolerance_);
-  RCLCPP_INFO(this->get_logger(), "  min_cluster_size: %d", min_cluster_size_);
-  RCLCPP_INFO(this->get_logger(), "  max_cluster_size: %d", max_cluster_size_);
-  RCLCPP_INFO(this->get_logger(), "  noise_point_cloud_range: %f", noise_point_cloud_range_);
-  RCLCPP_INFO(this->get_logger(), "  voxel_leaf_size: %f", voxel_leaf_size_);
-  RCLCPP_INFO(this->get_logger(), "  debug: %s", debug_ ? "true" : "false");
-  RCLCPP_INFO(this->get_logger(), "  execute_default: %s", execute_default ? "true" : "false");
+  // this->declare_parameter("enable_id", false);
+}
+
+CallbackReturn MaskTo3D::on_configure(const rclcpp_lifecycle::State &)
+{
+  base_frame_name_ = this->get_parameter("base_frame_name").as_string();
+  mask_topic_name_ = this->get_parameter("mask_topic_name").as_string();
+  cloud_topic_name_ = this->get_parameter("cloud_topic_name").as_string();
+  info_topic_name_ = this->get_parameter("info_topic_name").as_string();
+
+  x_min_ = this->get_parameter("x_min").as_double();
+  x_max_ = this->get_parameter("x_max").as_double();
+  y_min_ = this->get_parameter("y_min").as_double();
+  y_max_ = this->get_parameter("y_max").as_double();
+  z_min_ = this->get_parameter("z_min").as_double();
+  z_max_ = this->get_parameter("z_max").as_double();
+
+  cluster_tolerance_ = this->get_parameter("cluster_tolerance").as_double();
+  min_cluster_size_ = this->get_parameter("min_cluster_size").as_int();
+  max_cluster_size_ = this->get_parameter("max_cluster_size").as_int();
+  noise_point_cloud_range_ = this->get_parameter("noise_point_cloud_range").as_double();
+  voxel_leaf_size_ = this->get_parameter("voxel_leaf_size").as_double();
+
+  // enable_id_ = this->get_parameter("enable_id").as_bool();
+
+  RCLCPP_INFO(this->get_logger(), "Configuring MaskTo3D Node...");
+
+  RCLCPP_INFO(this->get_logger(), "Base Frame Name: %s", base_frame_name_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Mask Topic Name: %s", mask_topic_name_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Cloud Topic Name: %s", cloud_topic_name_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Info Topic Name: %s", info_topic_name_.c_str());
+
+  RCLCPP_INFO(this->get_logger(), "Clipping Bounds:");
+  RCLCPP_INFO(this->get_logger(), "  x: [%f, %f]", x_min_, x_max_);
+  RCLCPP_INFO(this->get_logger(), "  y: [%f, %f]", y_min_, y_max_);
+  RCLCPP_INFO(this->get_logger(), "  z: [%f, %f]", z_min_, z_max_);
+
+  RCLCPP_INFO(this->get_logger(), "Cluster Tolerance: %f", cluster_tolerance_);
+  RCLCPP_INFO(this->get_logger(), "Min Cluster Size: %d", min_cluster_size_);
+  RCLCPP_INFO(this->get_logger(), "Max Cluster Size: %d", max_cluster_size_);
+  RCLCPP_INFO(this->get_logger(), "Noise Point Cloud Range: %f", noise_point_cloud_range_);
+  RCLCPP_INFO(this->get_logger(), "Voxel Leaf Size: %f", voxel_leaf_size_);
+
+  // RCLCPP_INFO(this->get_logger(), "Enable ID: %s", enable_id_ ? "true" : "false");
 
   tfBuffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
   tfListener_ = std::make_shared<tf2_ros::TransformListener>(*tfBuffer_);
@@ -55,40 +90,81 @@ MaskTo3D::MaskTo3D(const rclcpp::NodeOptions & options)
   euclid_clustering_.setSearchMethod(kdtree_);
 
   pub_obj_poses_ = this->create_publisher<vision_msgs::msg::Detection3DArray>("object_3d_poses", 5);
-  pub_object_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("object_3d_cloud", 1);
+  pub_debug_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("object_3d_cloud", 1);
 
-  run_ctr_srv_ = this->create_service<std_srvs::srv::SetBool>(
-    "position/run_ctr", std::bind(&MaskTo3D::callback_runctr, this, std::placeholders::_1, std::placeholders::_2));
-
-  // Initialize subscriptions if default is true
-  auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
-  auto response = std::make_shared<std_srvs::srv::SetBool::Response>();
-  request->data = execute_default;
-  callback_runctr(request, response);
+  return CallbackReturn::SUCCESS;
 }
 
-void MaskTo3D::callback_runctr(
-  const std::shared_ptr<std_srvs::srv::SetBool::Request> req, 
-  std::shared_ptr<std_srvs::srv::SetBool::Response> res)
+CallbackReturn MaskTo3D::on_activate(const rclcpp_lifecycle::State &)
 {
-  if (req->data) {
-    if (!sub_masks_) {
-      rmw_qos_profile_t sensor_qos = rmw_qos_profile_sensor_data;
-      sub_masks_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::DetectMaskArray>>(this, mask_topic_);
-      sub_pcl_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, cloud_topic_, sensor_qos);
-      sub_info_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>(this, info_topic_);
+  RCLCPP_INFO(this->get_logger(), "Activating MaskTo3D Node...");
+  
+  pub_obj_poses_->on_activate();
+  pub_debug_cloud_->on_activate();
 
-      sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<MaskCloudSyncPolicy>>(
-        MaskCloudSyncPolicy(200), *sub_masks_, *sub_pcl_, *sub_info_);
-      sync_point_cloud_->registerCallback(&MaskTo3D::callback_MaskPointCloud, this);
-    }
-  } else {
-    sync_point_cloud_.reset();
-    sub_masks_.reset();
-    sub_pcl_.reset();
-    sub_info_.reset();
-  }
-  res->success = true;
+  rmw_qos_profile_t sensor_qos = rmw_qos_profile_sensor_data;
+
+  // Enable IPC explicitly for the subscriber
+  rclcpp::SubscriptionOptions sub_options;
+  sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
+
+  sub_masks_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::DetectMaskArray, rclcpp_lifecycle::LifecycleNode>>(this, mask_topic_name_);
+  sub_pcl_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2, rclcpp_lifecycle::LifecycleNode>>(this, cloud_topic_name_, sensor_qos);
+  sub_info_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo, rclcpp_lifecycle::LifecycleNode>>(this, info_topic_name_);
+
+  sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<MaskCloudSyncPolicy>>(
+    MaskCloudSyncPolicy(200), *sub_masks_, *sub_pcl_, *sub_info_);
+  sync_point_cloud_->registerCallback(&MaskTo3D::callback_MaskPointCloud, this);
+
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn MaskTo3D::on_deactivate(const rclcpp_lifecycle::State &)
+{
+  RCLCPP_INFO(this->get_logger(), "Deactivating MaskTo3D Node...");
+
+  pub_obj_poses_->on_deactivate();
+  pub_debug_cloud_->on_deactivate();
+
+  sync_point_cloud_.reset();
+  sub_masks_.reset();
+  sub_pcl_.reset();
+  sub_info_.reset();
+
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn MaskTo3D::on_cleanup(const rclcpp_lifecycle::State &)
+{
+  RCLCPP_INFO(this->get_logger(), "Cleaning up MaskTo3D Node...");
+  pub_obj_poses_.reset();
+  pub_debug_cloud_.reset();
+  tfBuffer_.reset();
+  tfListener_.reset();
+  tfBroadcaster_.reset();
+  kdtree_.reset();
+  
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn MaskTo3D::on_shutdown(const rclcpp_lifecycle::State &)
+{
+  RCLCPP_INFO(this->get_logger(), "Shutting down MaskTo3D Node...");
+  sync_point_cloud_.reset();
+  sub_masks_.reset();
+  sub_pcl_.reset();
+  sub_info_.reset();
+  pub_obj_poses_.reset();
+  pub_debug_cloud_.reset();
+  
+  return CallbackReturn::SUCCESS;
+}
+
+bool MaskTo3D::isRealisticPoint(const pcl::PointXYZ& pt) const {
+  return pcl::isFinite(pt) && 
+         pt.x >= x_min_ && pt.x <= x_max_ && 
+         pt.y >= y_min_ && pt.y <= y_max_ && 
+         pt.z >= z_min_ && pt.z <= z_max_;
 }
 
 void MaskTo3D::callback_MaskPointCloud(
@@ -132,8 +208,9 @@ void MaskTo3D::callback_MaskPointCloud(
     for (size_t j = 0; j < mask.pixel_x.size(); ++j) {
       int index = mask.pixel_y[j] * info_msg->width + mask.pixel_x[j];
       if (index >= 0 && index < static_cast<int>(cloud_src_optical->points.size())) {
-        if (pcl::isFinite(cloud_src_optical->points[index])) {
-          mask_cloud_optical->points.push_back(cloud_src_optical->points[index]);
+        const auto& pt = cloud_src_optical->points[index];
+        if (isRealisticPoint(pt)) {
+          mask_cloud_optical->points.push_back(pt);
         }
       }
     }
@@ -153,13 +230,13 @@ void MaskTo3D::callback_MaskPointCloud(
     }
   }
 
-  if (debug_) {
+  // Publish the combined point cloud of all detected objects for debugging
+  if (pub_debug_cloud_->get_subscription_count() > 0) {
     sensor_msgs::msg::PointCloud2 combined_cloud_msg;
     pcl::toROSMsg(*combined_cloud, combined_cloud_msg);
     combined_cloud_msg.header = info_msg->header;
     combined_cloud_msg.header.frame_id = base_frame_name_;
-    
-    pub_object_cloud_->publish(combined_cloud_msg);
+    pub_debug_cloud_->publish(combined_cloud_msg);
   }
 
   pub_obj_poses_->publish(object_pose_array);
@@ -210,9 +287,8 @@ vision_msgs::msg::Detection3D MaskTo3D::processMaskClustering(
   obj_pose.position.x = xyz_centroid.x();
   obj_pose.position.y = xyz_centroid.y();
   obj_pose.position.z = xyz_centroid.z();
-  obj_pose.orientation.w = 1.0; // Default flat orientation
+  obj_pose.orientation.w = 1.0;
 
-  // Transfer label/score information
   if (!mask.results.empty()) {
       object_pose.results.push_back(mask.results[0]);
   }
@@ -221,7 +297,7 @@ vision_msgs::msg::Detection3D MaskTo3D::processMaskClustering(
   object_pose.bbox.size.x = max_pt.x() - min_pt.x();
   object_pose.bbox.size.y = max_pt.y() - min_pt.y();
   object_pose.bbox.size.z = max_pt.z() - min_pt.z();
-  object_pose.id = mask.results[0].hypothesis.class_id + "_" + mask.instance_id;
+  object_pose.id = mask.results.empty() ? "" : mask.results[0].hypothesis.class_id + "_" + mask.instance_id;
   
   publishObjectTf(obj_pose, object_pose.id);
 

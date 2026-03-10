@@ -8,6 +8,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(pcl_ros REQUIRED)
@@ -26,46 +27,37 @@ include_directories(include)
 add_library(mask_to_3d_component SHARED src/mask_to_3d.cpp)
 target_include_directories(mask_to_3d_component PRIVATE include)
 ament_target_dependencies(mask_to_3d_component
-  "rclcpp" "rclcpp_components" "pcl_conversions" "pcl_ros" "tf2_ros"
+  "rclcpp" "rclcpp_lifecycle" "rclcpp_components" "pcl_conversions" "pcl_ros" "tf2_ros"
   "vision_msgs" "sensor_msgs" "geometry_msgs" "std_msgs" "std_srvs" "sobits_interfaces")
 rclcpp_components_register_node(mask_to_3d_component
   PLUGIN "image_to_position::MaskTo3D"
   EXECUTABLE mask_to_3d)
 
+# Component: Bbox to 3D 
+add_library(bbox_to_3d_component SHARED src/bbox_to_3d.cpp)
+target_include_directories(bbox_to_3d_component PRIVATE include)
+ament_target_dependencies(bbox_to_3d_component
+  "rclcpp" "rclcpp_lifecycle" "rclcpp_components" "pcl_conversions" "pcl_ros" "tf2_ros"
+  "vision_msgs" "sensor_msgs" "geometry_msgs" "std_msgs" "std_srvs" "sobits_interfaces")
+rclcpp_components_register_node(bbox_to_3d_component
+  PLUGIN "image_to_position::BboxTo3D"
+  EXECUTABLE bbox_to_3d)
 
-# TODO: update to component
-add_executable(bbox_to_3d src/bbox_to_3d.cpp)
-ament_target_dependencies(bbox_to_3d
-  "rclcpp"
-  "pcl_conversions"
-  "pcl_ros"
-  "tf2_ros"
-  "vision_msgs"
-  "sensor_msgs"
-  "geometry_msgs"
-  "std_msgs"
-  "std_srvs"
-  "sobits_interfaces")
-
-# TODO: update to component
-add_executable(keypoint_to_3d src/keypoint_to_3d.cpp)
-ament_target_dependencies(keypoint_to_3d
-  "rclcpp"
-  "pcl_conversions"
-  "pcl_ros"
-  "tf2_ros"
-  "vision_msgs"
-  "sensor_msgs"
-  "geometry_msgs"
-  "std_msgs"
-  "std_srvs"
-  "sobits_interfaces")
+# Component: Keypoint to 3D 
+add_library(keypoint_to_3d_component SHARED src/keypoint_to_3d.cpp)
+target_include_directories(keypoint_to_3d_component PRIVATE include)
+ament_target_dependencies(keypoint_to_3d_component
+  "rclcpp" "rclcpp_lifecycle" "rclcpp_components" "pcl_conversions" "pcl_ros" "tf2_ros"
+  "vision_msgs" "sensor_msgs" "geometry_msgs" "std_msgs" "std_srvs" "sobits_interfaces")
+rclcpp_components_register_node(keypoint_to_3d_component
+  PLUGIN "image_to_position::KeypointTo3D"
+  EXECUTABLE keypoint_to_3d)
 
 
 install(TARGETS
   mask_to_3d_component
-  bbox_to_3d
-  keypoint_to_3d
+  bbox_to_3d_component
+  keypoint_to_3d_component
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}
