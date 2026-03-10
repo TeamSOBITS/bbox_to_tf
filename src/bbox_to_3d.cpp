@@ -4,7 +4,7 @@
 #include <pcl_ros/transforms.hpp>
 #include <pcl/common/impl/centroid.hpp>
 #include <pcl/common/common.h>
-#include <pcl/common/point_tests.h> // For pcl::isFinite
+#include <pcl/common/point_tests.h>
 #include <pcl/filters/crop_box.h>
 
 #include <tf2/LinearMath/Quaternion.h>
@@ -15,76 +15,178 @@ namespace image_to_position
 {
 
 BboxTo3D::BboxTo3D(const rclcpp::NodeOptions & options)
-: Node("bbox_to_3d", options)
+: LifecycleNode("bbox_to_3d", options)
 {
-  // Declare parameters
-  base_frame_name_ = this->declare_parameter("base_frame_name", "base_footprint");
-  bbox_topic_name_ = this->declare_parameter("bbox_topic_name", "objects_rect");
-  cloud_topic_name_ = this->declare_parameter("cloud_topic_name", "dummy_pointcloud");
-  depth_topic_name_ = this->declare_parameter("depth_image_topic_name", "dummy_image");
-  info_topic_name_ = this->declare_parameter("info_topic_name", "dummy_info");
+  this->declare_parameter("base_frame_name", "base_footprint");
+  this->declare_parameter("bbox_topic_name", "objects_rect");
+  this->declare_parameter("cloud_topic_name", "dummy_pointcloud");
+  this->declare_parameter("depth_image_topic_name", "dummy_image");
+  this->declare_parameter("info_topic_name", "dummy_info");
 
-  cluster_tolerance = this->declare_parameter("cluster_tolerance", 0.01);
-  min_cluster_size = this->declare_parameter("min_cluster_size", 100);
-  max_cluster_size = this->declare_parameter("max_cluster_size", 20000);
-  noise_point_cloud_range_ = this->declare_parameter("noise_point_cloud_range", 0.01);
-  positioning_detection_mode_ = this->declare_parameter("positioning_detection_mode", "point_cloud"); // "point_cloud", "depth_image", "fast_point"
-  voxel_leaf_size_ = this->declare_parameter("voxel_leaf_size", 0.01);
+  this->declare_parameter("x_min", -10.0);
+  this->declare_parameter("x_max", 10.0);
+  this->declare_parameter("y_min", -10.0);
+  this->declare_parameter("y_max", 10.0);
+  this->declare_parameter("z_min", -10.0);
+  this->declare_parameter("z_max", 10.0);
 
-  min_realistic_depth_ = this->declare_parameter("min_realistic_depth", 0.01);
-  max_realistic_depth_ = this->declare_parameter("max_realistic_depth", 50.0);
+  this->declare_parameter("cluster_tolerance", 0.01);
+  this->declare_parameter("min_cluster_size", 100);
+  this->declare_parameter("max_cluster_size", 20000);
+  this->declare_parameter("noise_point_cloud_range", 0.01);
+  this->declare_parameter("positioning_detection_mode", "point_cloud");
+  this->declare_parameter("voxel_leaf_size", 0.01);
 
-  enable_id_ = this->declare_parameter("enable_id", false);
-  debug_ = this->declare_parameter("debug", false);
-  bool execute_default = this->declare_parameter("execute_default", true);
+  this->declare_parameter("enable_id", false);
+}
 
-  // Param info logging
-  RCLCPP_INFO(this->get_logger(), "Parameters:");
-  RCLCPP_INFO(this->get_logger(), "  base_frame_name: %s", base_frame_name_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  bbox topic: %s", bbox_topic_name_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  cloud topic: %s", cloud_topic_name_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  depth topic: %s", depth_topic_name_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  info topic: %s", info_topic_name_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  cluster_tolerance: %f", cluster_tolerance);
-  RCLCPP_INFO(this->get_logger(), "  min_cluster_size: %d", min_cluster_size);
-  RCLCPP_INFO(this->get_logger(), "  max_cluster_size: %d", max_cluster_size);
-  RCLCPP_INFO(this->get_logger(), "  noise_point_cloud_range: %f", noise_point_cloud_range_);
-  RCLCPP_INFO(this->get_logger(), "  positioning_detection_mode: %s", positioning_detection_mode_.c_str());
-  RCLCPP_INFO(this->get_logger(), "  voxel_leaf_size: %f", voxel_leaf_size_);
-  RCLCPP_INFO(this->get_logger(), "  min_realistic_depth: %f", min_realistic_depth_);
-  RCLCPP_INFO(this->get_logger(), "  max_realistic_depth: %f", max_realistic_depth_);
-  RCLCPP_INFO(this->get_logger(), "  enable_id: %s", enable_id_ ? "true" : "false");
-  RCLCPP_INFO(this->get_logger(), "  debug: %s", debug_ ? "true" : "false");
-  RCLCPP_INFO(this->get_logger(), "  execute_default: %s", execute_default ? "true" : "false");
+CallbackReturn BboxTo3D::on_configure(const rclcpp_lifecycle::State &)
+{
+  base_frame_name_ = this->get_parameter("base_frame_name").as_string();
+  bbox_topic_name_ = this->get_parameter("bbox_topic_name").as_string();
+  cloud_topic_name_ = this->get_parameter("cloud_topic_name").as_string();
+  depth_topic_name_ = this->get_parameter("depth_image_topic_name").as_string();
+  info_topic_name_ = this->get_parameter("info_topic_name").as_string();
+
+  x_min_ = this->get_parameter("x_min").as_double();
+  x_max_ = this->get_parameter("x_max").as_double();
+  y_min_ = this->get_parameter("y_min").as_double();
+  y_max_ = this->get_parameter("y_max").as_double();
+  z_min_ = this->get_parameter("z_min").as_double();
+  z_max_ = this->get_parameter("z_max").as_double();
+
+  cluster_tolerance_ = this->get_parameter("cluster_tolerance").as_double();
+  min_cluster_size_ = this->get_parameter("min_cluster_size").as_int();
+  max_cluster_size_ = this->get_parameter("max_cluster_size").as_int();
+  noise_point_cloud_range_ = this->get_parameter("noise_point_cloud_range").as_double();
+  positioning_detection_mode_ = this->get_parameter("positioning_detection_mode").as_string();
+  voxel_leaf_size_ = this->get_parameter("voxel_leaf_size").as_double();
+
+  enable_id_ = this->get_parameter("enable_id").as_bool();
+
+  RCLCPP_INFO(this->get_logger(), "Configuring BboxTo3D Node...");
+
+  RCLCPP_INFO(this->get_logger(), "Base Frame Name: %s", base_frame_name_.c_str());
+  RCLCPP_INFO(this->get_logger(), "BBox Topic Name: %s", bbox_topic_name_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Cloud Topic Name: %s", cloud_topic_name_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Depth Image Topic Name: %s", depth_topic_name_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Camera Info Topic Name: %s", info_topic_name_.c_str());
+
+  RCLCPP_INFO(this->get_logger(), "Clipping Bounds:");
+  RCLCPP_INFO(this->get_logger(), "  x: [%f, %f]", x_min_, x_max_);
+  RCLCPP_INFO(this->get_logger(), "  y: [%f, %f]", y_min_, y_max_);
+  RCLCPP_INFO(this->get_logger(), "  z: [%f, %f]", z_min_, z_max_);
+
+  RCLCPP_INFO(this->get_logger(), "Cluster Tolerance: %f", cluster_tolerance_);
+  RCLCPP_INFO(this->get_logger(), "Min Cluster Size: %d", min_cluster_size_);
+  RCLCPP_INFO(this->get_logger(), "Max Cluster Size: %d", max_cluster_size_);
+  RCLCPP_INFO(this->get_logger(), "Noise Point Cloud Range: %f", noise_point_cloud_range_);
+  RCLCPP_INFO(this->get_logger(), "Positioning Detection Mode: %s", positioning_detection_mode_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Voxel Leaf Size: %f", voxel_leaf_size_);
+
+  RCLCPP_INFO(this->get_logger(), "Enable ID: %s", enable_id_ ? "true" : "false");
+
 
   tfBuffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
   tfListener_ = std::make_shared<tf2_ros::TransformListener>(*tfBuffer_);
   tfBroadcaster_ = std::make_shared<tf2_ros::TransformBroadcaster>(this);
 
   kdtree_.reset(new pcl::search::KdTree<PointT>);
-  euclid_clustering_.setClusterTolerance(cluster_tolerance);
-  euclid_clustering_.setMinClusterSize(min_cluster_size);
-  euclid_clustering_.setMaxClusterSize(max_cluster_size);
+  euclid_clustering_.setClusterTolerance(cluster_tolerance_);
+  euclid_clustering_.setMinClusterSize(min_cluster_size_);
+  euclid_clustering_.setMaxClusterSize(max_cluster_size_);
   euclid_clustering_.setSearchMethod(kdtree_);
 
   pub_obj_poses_ = this->create_publisher<vision_msgs::msg::Detection3DArray>("object_3d_poses", 5);
-  pub_object_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("object_3d_cloud", 1);
+  pub_debug_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("object_3d_cloud", 1);
 
-  run_ctr_srv_ = this->create_service<std_srvs::srv::SetBool>(
-    "position/run_ctr", std::bind(&BboxTo3D::callback_runctr, this, std::placeholders::_1, std::placeholders::_2));
+  return CallbackReturn::SUCCESS;
+}
 
-  // Initialize subscriptions if default is true
-  auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
-  auto response = std::make_shared<std_srvs::srv::SetBool::Response>();
-  request->data = execute_default;
-  callback_runctr(request, response);
+CallbackReturn BboxTo3D::on_activate(const rclcpp_lifecycle::State &)
+{
+  RCLCPP_INFO(this->get_logger(), "Activating BboxTo3D Node...");
+
+  pub_obj_poses_->on_activate();
+  pub_debug_cloud_->on_activate();
+
+  rmw_qos_profile_t sensor_qos = rmw_qos_profile_sensor_data;
+
+  // Enable IPC explicitly for the subscriber
+  rclcpp::SubscriptionOptions sub_options;
+  sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
+
+  sub_bboxes_ = std::make_shared<message_filters::Subscriber<vision_msgs::msg::Detection2DArray, rclcpp_lifecycle::LifecycleNode>>(this, bbox_topic_name_);
+  sub_pcl_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2, rclcpp_lifecycle::LifecycleNode>>(this, cloud_topic_name_, sensor_qos);
+  sub_img_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image, rclcpp_lifecycle::LifecycleNode>>(this, depth_topic_name_, sensor_qos);
+  sub_info_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo, rclcpp_lifecycle::LifecycleNode>>(this, info_topic_name_, sensor_qos);
+
+  if (positioning_detection_mode_ == "point_cloud" || positioning_detection_mode_ == "fast_point") {
+    sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<BBoxesCloudSyncPolicy>>(
+      BBoxesCloudSyncPolicy(200), *sub_bboxes_, *sub_pcl_, *sub_info_);
+    sync_point_cloud_->registerCallback(&BboxTo3D::callback_BBoxPointCloud, this);
+  } else if (positioning_detection_mode_ == "depth_image") {
+    sync_depth_image_ = std::make_shared<message_filters::Synchronizer<BBoxesDepthSyncPolicy>>(
+      BBoxesDepthSyncPolicy(200), *sub_bboxes_, *sub_img_, *sub_info_);
+    sync_depth_image_->registerCallback(&BboxTo3D::callback_BBoxDepthImage, this);
+  } else {
+    RCLCPP_ERROR(this->get_logger(), "Invalid positioning_detection_mode: %s", positioning_detection_mode_.c_str());
+    return CallbackReturn::FAILURE;
+  }
+
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn BboxTo3D::on_deactivate(const rclcpp_lifecycle::State &)
+{
+  RCLCPP_INFO(this->get_logger(), "Deactivating BboxTo3D Node...");
+
+  pub_obj_poses_->on_deactivate();
+  pub_debug_cloud_->on_deactivate();
+
+  sync_point_cloud_.reset();
+  sync_depth_image_.reset();
+  sub_bboxes_.reset();
+  sub_pcl_.reset();
+  sub_img_.reset();
+  sub_info_.reset();
+
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn BboxTo3D::on_cleanup(const rclcpp_lifecycle::State &)
+{
+  RCLCPP_INFO(this->get_logger(), "Cleaning up BboxTo3D Node...");
+  pub_obj_poses_.reset();
+  pub_debug_cloud_.reset();
+  tfBuffer_.reset();
+  tfListener_.reset();
+  tfBroadcaster_.reset();
+  kdtree_.reset();
+
+  return CallbackReturn::SUCCESS;
+}
+
+CallbackReturn BboxTo3D::on_shutdown(const rclcpp_lifecycle::State &)
+{
+  RCLCPP_INFO(this->get_logger(), "Shutting down BboxTo3D Node...");
+  sync_point_cloud_.reset();
+  sync_depth_image_.reset();
+  sub_bboxes_.reset();
+  sub_pcl_.reset();
+  sub_img_.reset();
+  sub_info_.reset();
+  pub_obj_poses_.reset();
+  pub_debug_cloud_.reset();
+
+  return CallbackReturn::SUCCESS;
 }
 
 bool BboxTo3D::isRealisticPoint(const pcl::PointXYZ& pt) const {
   return pcl::isFinite(pt) && 
-         pt.z > min_realistic_depth_ && pt.z < max_realistic_depth_ && 
-         std::abs(pt.x) < max_realistic_depth_ && 
-         std::abs(pt.y) < max_realistic_depth_;
+         pt.x >= x_min_ && pt.x <= x_max_ && 
+         pt.y >= y_min_ && pt.y <= y_max_ && 
+         pt.z >= z_min_ && pt.z <= z_max_;
 }
 
 std::string BboxTo3D::generateObjectId(const std::string& base_id, size_t index) const {
@@ -389,9 +491,26 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxDepthImage(
     } else if (img_msg->encoding == sensor_msgs::image_encodings::TYPE_32SC1) {
       const int32_t* data = reinterpret_cast<const int32_t*>(&img_msg->data[center_index]);
       object_point.z = static_cast<float>(*data) / 1000.;
+    } else {
+      RCLCPP_ERROR(this->get_logger(), "Unsupported image encoding: %s", img_msg->encoding.c_str());
+      return object_pose;
     }
-    if (std::isfinite(object_point.z) && object_point.z > min_realistic_depth_ && object_point.z < max_realistic_depth_) {
-      set_tf = true;
+    if (std::isfinite(object_point.z)) {
+      double fx = info_msg->k[0];
+      double fy = info_msg->k[4];
+      double cx = info_msg->k[2];
+      double cy = info_msg->k[5];
+
+      PointT pt_check;
+      pt_check.z = object_point.z;
+      pt_check.x = (center_x - cx) * object_point.z / fx;
+      pt_check.y = (center_y - cy) * object_point.z / fy;
+
+      if (isRealisticPoint(pt_check)) {
+        object_point.x = pt_check.x;
+        object_point.y = pt_check.y;
+        set_tf = true;
+      }
     }
   }
 
@@ -423,7 +542,6 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxDepthImage(
     pt.x = obj_pose.position.x; pt.y = obj_pose.position.y; pt.z = obj_pose.position.z;
     point_cloud_bbox->points.push_back(pt);
     
-    // Set metadata
     point_cloud_bbox->width = point_cloud_bbox->points.size();
     point_cloud_bbox->height = 1;
     point_cloud_bbox->is_dense = true;
@@ -493,7 +611,8 @@ void BboxTo3D::callback_BBoxPointCloud(
     }
   }
 
-  if (debug_) {
+  // Publish the combined point cloud of all detected objects for debugging
+  if (pub_debug_cloud_->get_subscription_count() > 0) {
     combined_cloud->width = combined_cloud->points.size();
     combined_cloud->height = 1;
     combined_cloud->is_dense = true;
@@ -503,7 +622,7 @@ void BboxTo3D::callback_BBoxPointCloud(
     combined_cloud_msg.header = info_msg->header;
     combined_cloud_msg.header.frame_id = base_frame_name_;
     
-    pub_object_cloud_->publish(combined_cloud_msg);
+    pub_debug_cloud_->publish(combined_cloud_msg);
   }
   
   pub_obj_poses_->publish(object_pose_array);
@@ -543,7 +662,8 @@ void BboxTo3D::callback_BBoxDepthImage(
     }
   }
 
-  if (debug_) {
+  // Publish the combined point cloud of all detected objects for debugging
+  if (pub_debug_cloud_->get_subscription_count() > 0) {
     combined_cloud->width = combined_cloud->points.size();
     combined_cloud->height = 1;
     combined_cloud->is_dense = true;
@@ -553,53 +673,10 @@ void BboxTo3D::callback_BBoxDepthImage(
     combined_cloud_msg.header = info_msg->header;
     combined_cloud_msg.header.frame_id = base_frame_name_;
 
-    pub_object_cloud_->publish(combined_cloud_msg);
+    pub_debug_cloud_->publish(combined_cloud_msg);
   }
 
   pub_obj_poses_->publish(object_pose_array);
-}
-
-void BboxTo3D::callback_runctr(const std::shared_ptr<std_srvs::srv::SetBool::Request> req, std::shared_ptr<std_srvs::srv::SetBool::Response> res) {
-  if (req->data) {
-    rmw_qos_profile_t sensor_qos = rmw_qos_profile_sensor_data;
-    if (!sub_bboxes_) sub_bboxes_ = std::make_shared<message_filters::Subscriber<vision_msgs::msg::Detection2DArray>>(this, bbox_topic_name_);
-    if (!sub_pcl_)    sub_pcl_    = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>(this, cloud_topic_name_, sensor_qos);
-    if (!sub_img_)    sub_img_    = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image>>(this, depth_topic_name_, sensor_qos);
-    if (!sub_info_)   sub_info_   = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>(this, info_topic_name_, sensor_qos);
-
-    if ((positioning_detection_mode_ == "point_cloud") || (positioning_detection_mode_ == "fast_point")) {
-      if (!sync_point_cloud_) sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<BBoxesCloudSyncPolicy>>(BBoxesCloudSyncPolicy(200), *sub_bboxes_, *sub_pcl_, *sub_info_);
-      sync_point_cloud_->registerCallback(&BboxTo3D::callback_BBoxPointCloud, this);
-    } else if (positioning_detection_mode_ == "depth_image") {
-      if (!sync_depth_image_) sync_depth_image_ = std::make_shared<message_filters::Synchronizer<BBoxesDepthSyncPolicy>>(BBoxesDepthSyncPolicy(200), *sub_bboxes_, *sub_img_, *sub_info_);
-      sync_depth_image_->registerCallback(&BboxTo3D::callback_BBoxDepthImage, this);
-    } else {
-      RCLCPP_ERROR(this->get_logger(), "Invalid positioning_detection_mode: %s", positioning_detection_mode_.c_str());
-      res->success = false;
-      return;
-    }
-
-  } else {
-    if (sync_point_cloud_) sync_point_cloud_.reset();
-    if (sync_depth_image_) sync_depth_image_.reset();
-    if (sub_bboxes_) {
-      sub_bboxes_->unsubscribe();
-      sub_bboxes_ = nullptr;
-    }
-    if (sub_pcl_) {
-      sub_pcl_->unsubscribe();
-      sub_pcl_ = nullptr;
-    }
-    if (sub_img_) {
-      sub_img_->unsubscribe();
-      sub_img_ = nullptr;
-    }
-    if (sub_info_) {
-      sub_info_->unsubscribe();
-      sub_info_ = nullptr;
-    }
-  }
-  res->success = true;
 }
 
 }  // namespace image_to_position

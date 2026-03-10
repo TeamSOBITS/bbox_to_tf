@@ -2,25 +2,28 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>image_to_position</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="sobits@todo.todo">sobits</maintainer>
-  <license>TODO: License declaration</license>
+  <version>1.0.0</version>
+  <description>Converts image-based detections to 3D positions using point clouds.</description>
+
+  <maintainer email="team.sobits@gmail.com">TeamSOBITS</maintainer>
+  <license>BSD-3-Clause</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
-  <depend>std_msgs</depend>
-  <depend>std_srvs</depend>
-  <depend>geometry_msgs</depend>
-  <depend>sensor_msgs</depend>
-  <depend>message_filters</depend>
+  <depend>rclcpp_lifecycle</depend>
+  <depend>rclcpp_components</depend>
   <depend>pcl_conversions</depend>
   <depend>pcl_ros</depend>
-  <depend>tf2</depend>
   <depend>tf2_ros</depend>
-  <depend>sobits_interfaces</depend>
+  <depend>tf2</depend>
+  <depend>tf2_geometry_msgs</depend>
   <depend>vision_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
+  <depend>sobits_interfaces</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

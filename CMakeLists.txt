@@ -8,6 +8,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_lifecycle REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(pcl_ros REQUIRED)
@@ -26,7 +27,7 @@ include_directories(include)
 add_library(mask_to_3d_component SHARED src/mask_to_3d.cpp)
 target_include_directories(mask_to_3d_component PRIVATE include)
 ament_target_dependencies(mask_to_3d_component
-  "rclcpp" "rclcpp_components" "pcl_conversions" "pcl_ros" "tf2_ros"
+  "rclcpp" "rclcpp_lifecycle" "rclcpp_components" "pcl_conversions" "pcl_ros" "tf2_ros"
   "vision_msgs" "sensor_msgs" "geometry_msgs" "std_msgs" "std_srvs" "sobits_interfaces")
 rclcpp_components_register_node(mask_to_3d_component
   PLUGIN "image_to_position::MaskTo3D"
@@ -36,7 +37,7 @@ rclcpp_components_register_node(mask_to_3d_component
 add_library(bbox_to_3d_component SHARED src/bbox_to_3d.cpp)
 target_include_directories(bbox_to_3d_component PRIVATE include)
 ament_target_dependencies(bbox_to_3d_component
-  "rclcpp" "rclcpp_components" "pcl_conversions" "pcl_ros" "tf2_ros"
+  "rclcpp" "rclcpp_lifecycle" "rclcpp_components" "pcl_conversions" "pcl_ros" "tf2_ros"
   "vision_msgs" "sensor_msgs" "geometry_msgs" "std_msgs" "std_srvs" "sobits_interfaces")
 rclcpp_components_register_node(bbox_to_3d_component
   PLUGIN "image_to_position::BboxTo3D"
@@ -46,10 +47,10 @@ rclcpp_components_register_node(bbox_to_3d_component
 add_library(keypoint_to_3d_component SHARED src/keypoint_to_3d.cpp)
 target_include_directories(keypoint_to_3d_component PRIVATE include)
 ament_target_dependencies(keypoint_to_3d_component
-  "rclcpp" "rclcpp_components" "pcl_conversions" "pcl_ros" "tf2_ros"
+  "rclcpp" "rclcpp_lifecycle" "rclcpp_components" "pcl_conversions" "pcl_ros" "tf2_ros"
   "vision_msgs" "sensor_msgs" "geometry_msgs" "std_msgs" "std_srvs" "sobits_interfaces")
 rclcpp_components_register_node(keypoint_to_3d_component
-  PLUGIN "image_to_position::KeyTo3D"
+  PLUGIN "image_to_position::KeypointTo3D"
   EXECUTABLE keypoint_to_3d)
 
 

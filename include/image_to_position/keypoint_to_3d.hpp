@@ -1,7 +1,8 @@
-#ifndef IMAGE_TO_POSITION__KEYPOINT_TO_3D_HPP_
-#define IMAGE_TO_POSITION__KEYPOINT_TO_3D_HPP_
+#pragma once
 
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp_lifecycle/lifecycle_node.hpp>
+#include <rclcpp_lifecycle/lifecycle_publisher.hpp>
 
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
@@ -26,15 +27,22 @@
 
 #include "sobits_interfaces/msg/key_point_array.hpp"
 #include "sobits_interfaces/msg/key_point.hpp"
-#include <std_srvs/srv/set_bool.hpp>
 
 namespace image_to_position
 {
 
-class KeyTo3D : public rclcpp::Node
+using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
+
+class KeypointTo3D : public rclcpp_lifecycle::LifecycleNode
 {
 public:
-  explicit KeyTo3D(const rclcpp::NodeOptions & options);
+  explicit KeypointTo3D(const rclcpp::NodeOptions & options);
+
+  CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_activate(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_deactivate(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_cleanup(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_shutdown(const rclcpp_lifecycle::State & previous_state) override;
 
 private:
   using PointT = pcl::PointXYZ;
@@ -55,10 +63,6 @@ private:
     const std::shared_ptr<sensor_msgs::msg::Image> img_msg,
     const std::shared_ptr<sensor_msgs::msg::CameraInfo> info_msg);
 
-  void callback_runctr(
-    const std::shared_ptr<std_srvs::srv::SetBool::Request> req, 
-    std::shared_ptr<std_srvs::srv::SetBool::Response> res);
-
   // Processing Methods
   void processKeysTo3D(
     const std::shared_ptr<sobits_interfaces::msg::KeyPointArray> pose_2d_array_msg,
@@ -71,7 +75,8 @@ private:
   std::string generateObjectId(const std::string& base_id, size_t index) const;
   geometry_msgs::msg::Quaternion get_quat_from_euler(const geometry_msgs::msg::Point& rpy);
   void publishObjectTf(const geometry_msgs::msg::Pose &pose, const std::string &object_id);
-
+  bool isRealisticPoint(const pcl::PointXYZ& pt) const;
+  
   // Variables
   std::shared_ptr<tf2_ros::Buffer> tfBuffer_;
   std::shared_ptr<tf2_ros::TransformListener> tfListener_;
@@ -83,25 +88,25 @@ private:
   std::string depth_topic_name_;
   std::string info_topic_name_;
 
+  double x_min_, x_max_;
+  double y_min_, y_max_;
+  double z_min_, z_max_;
+
   std::string positioning_detection_mode_;
-  int keypoint_patch_size_; 
+  int keypoint_patch_size_;
 
   bool enable_id_;
-  bool debug_;
 
-  rclcpp::Publisher<sobits_interfaces::msg::KeyPointArray>::SharedPtr pub_key_3d_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr         pub_object_cloud_;
-  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr                  run_ctr_srv_;
+  std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sobits_interfaces::msg::KeyPointArray>> pub_key_3d_;
+  std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::PointCloud2>>         pub_debug_cloud_;
 
-  std::shared_ptr<message_filters::Subscriber<sobits_interfaces::msg::KeyPointArray>> sub_key_2d_array_;
-  std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::PointCloud2>>         sub_pcl_;
-  std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::Image>>               sub_img_;
-  std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>          sub_info_;
+  std::shared_ptr<message_filters::Subscriber<sobits_interfaces::msg::KeyPointArray, rclcpp_lifecycle::LifecycleNode>> sub_key_2d_array_;
+  std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::PointCloud2, rclcpp_lifecycle::LifecycleNode>>         sub_pcl_;
+  std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::Image, rclcpp_lifecycle::LifecycleNode>>               sub_img_;
+  std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::CameraInfo, rclcpp_lifecycle::LifecycleNode>>          sub_info_;
 
   std::shared_ptr<message_filters::Synchronizer<KeysCloudSyncPolicy>> sync_point_cloud_;
   std::shared_ptr<message_filters::Synchronizer<KeysDepthSyncPolicy>> sync_depth_image_;
 };
 
 }  // namespace image_to_position
-
-#endif  // IMAGE_TO_POSITION__KEYPOINT_TO_3D_HPP_
