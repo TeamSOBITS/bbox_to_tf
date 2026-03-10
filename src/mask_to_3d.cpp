@@ -297,7 +297,7 @@ vision_msgs::msg::Detection3D MaskTo3D::processMaskClustering(
   object_pose.bbox.size.x = max_pt.x() - min_pt.x();
   object_pose.bbox.size.y = max_pt.y() - min_pt.y();
   object_pose.bbox.size.z = max_pt.z() - min_pt.z();
-  object_pose.id = mask.results.empty() ? "" : mask.results[0].hypothesis.class_id;
+  object_pose.id = mask.results.empty() ? "" : mask.results[0].hypothesis.class_id + "_" + mask.instance_id;
   
   publishObjectTf(obj_pose, object_pose.id);
 
