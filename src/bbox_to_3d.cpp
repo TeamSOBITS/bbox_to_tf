@@ -97,8 +97,10 @@ CallbackReturn BboxTo3D::on_configure(const rclcpp_lifecycle::State &)
   euclid_clustering_.setMaxClusterSize(max_cluster_size_);
   euclid_clustering_.setSearchMethod(kdtree_);
 
-  pub_obj_poses_ = this->create_publisher<vision_msgs::msg::Detection3DArray>("object_3d_poses", 5);
-  pub_debug_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("object_3d_cloud", 1);
+  pub_obj_poses_ = this->create_publisher<vision_msgs::msg::Detection3DArray>(
+    this->get_name() + std::string("/object_3d_poses"), 5);
+  pub_debug_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+    this->get_name() + std::string("/object_3d_cloud"), 1);
 
   return CallbackReturn::SUCCESS;
 }
@@ -116,7 +118,7 @@ CallbackReturn BboxTo3D::on_activate(const rclcpp_lifecycle::State &)
   rclcpp::SubscriptionOptions sub_options;
   sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
 
-  sub_bboxes_ = std::make_shared<message_filters::Subscriber<vision_msgs::msg::Detection2DArray, rclcpp_lifecycle::LifecycleNode>>(this, bbox_topic_name_);
+  sub_bboxes_ = std::make_shared<message_filters::Subscriber<vision_msgs::msg::Detection2DArray, rclcpp_lifecycle::LifecycleNode>>(this, bbox_topic_name_, sensor_qos);
   sub_pcl_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2, rclcpp_lifecycle::LifecycleNode>>(this, cloud_topic_name_, sensor_qos);
   sub_img_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::Image, rclcpp_lifecycle::LifecycleNode>>(this, depth_topic_name_, sensor_qos);
   sub_info_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo, rclcpp_lifecycle::LifecycleNode>>(this, info_topic_name_, sensor_qos);
@@ -280,6 +282,9 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxClustering(
   // Transform only the extracted optical cloud to base footprint
   pcl_ros::transformPointCloud(*point_cloud_bbox_optical, *point_cloud_bbox_base, transform);
   point_cloud_bbox_base->header.frame_id = base_frame_name_;
+  point_cloud_bbox_base->width = point_cloud_bbox_base->points.size();
+  point_cloud_bbox_base->height = 1;
+  point_cloud_bbox_base->is_dense = true;
 
   // Store the transformed center point to use as a distance reference
   PointT reference_center = point_cloud_bbox_base->points[0];
