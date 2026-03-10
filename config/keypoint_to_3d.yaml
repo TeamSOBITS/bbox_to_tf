@@ -1,22 +1,22 @@
 /**/keypoint_to_3d:
   ros__parameters:
-    base_frame_name: "camera_base"
-    keypoint_topic_name: "keypoints"
-    cloud_topic_name: "/point_cloud"
-    depth_image_topic_name: "/depth_image_raw"
-    info_topic_name: "/camera_info"
+    base_frame_name: "base_footprint"
+    keypoint_topic_name: "yolo_ros/keypoints"
+    cloud_topic_name: "head_camera/depth/color/points"
+    depth_image_topic_name: "head_camera/depth/image_rect_raw"
+    info_topic_name: "head_camera/depth/camera_info"
 
     # Options
     positioning_detection_mode: "point_cloud" # Options: "point_cloud", "fast_point", "depth_image"
     enable_id: false
 
-    # Clipping box parameters
-    x_min: -0.5
-    x_max: 0.5
-    y_min: -0.5
-    y_max: 0.5
-    z_min: -0.5
-    z_max: 0.5
+    # Clipping box parameters (respect to camera frame)
+    x_min: 0.0
+    x_max: 2.0
+    y_min: -2.0
+    y_max: 2.0
+    z_min: -2.0
+    z_max: 2.0
     
     # Point Cloud Processing
     keypoint_patch_size: 5
