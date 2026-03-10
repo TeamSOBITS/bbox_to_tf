@@ -89,8 +89,10 @@ CallbackReturn MaskTo3D::on_configure(const rclcpp_lifecycle::State &)
   euclid_clustering_.setMaxClusterSize(max_cluster_size_);
   euclid_clustering_.setSearchMethod(kdtree_);
 
-  pub_obj_poses_ = this->create_publisher<vision_msgs::msg::Detection3DArray>("object_3d_poses", 5);
-  pub_debug_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("object_3d_cloud", 1);
+  pub_obj_poses_ = this->create_publisher<vision_msgs::msg::Detection3DArray>(
+    this->get_name() + std::string("/object_3d_poses"), 5);
+  pub_debug_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+    this->get_name() + std::string("/object_3d_cloud"), 1);
 
   return CallbackReturn::SUCCESS;
 }
@@ -108,9 +110,9 @@ CallbackReturn MaskTo3D::on_activate(const rclcpp_lifecycle::State &)
   rclcpp::SubscriptionOptions sub_options;
   sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
 
-  sub_masks_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::DetectMaskArray, rclcpp_lifecycle::LifecycleNode>>(this, mask_topic_name_);
+  sub_masks_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::DetectMaskArray, rclcpp_lifecycle::LifecycleNode>>(this, mask_topic_name_, sensor_qos);
   sub_pcl_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2, rclcpp_lifecycle::LifecycleNode>>(this, cloud_topic_name_, sensor_qos);
-  sub_info_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo, rclcpp_lifecycle::LifecycleNode>>(this, info_topic_name_);
+  sub_info_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo, rclcpp_lifecycle::LifecycleNode>>(this, info_topic_name_, sensor_qos);
 
   sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<MaskCloudSyncPolicy>>(
     MaskCloudSyncPolicy(200), *sub_masks_, *sub_pcl_, *sub_info_);
@@ -217,9 +219,16 @@ void MaskTo3D::callback_MaskPointCloud(
 
     if (mask_cloud_optical->points.empty()) continue;
 
+    mask_cloud_optical->width = mask_cloud_optical->points.size();
+    mask_cloud_optical->height = 1;
+    mask_cloud_optical->is_dense = true;
+  
     // Transform the extracted mask points to the base footprint
     pcl_ros::transformPointCloud(*mask_cloud_optical, *mask_cloud_base, transformStamped);
     mask_cloud_base->header.frame_id = base_frame_name_;
+    mask_cloud_base->width = mask_cloud_base->points.size();
+    mask_cloud_base->height = 1;
+    mask_cloud_base->is_dense = true;
 
     // Process Clustering
     vision_msgs::msg::Detection3D object_pose = processMaskClustering(mask, info_msg, mask_cloud_base);
@@ -232,6 +241,10 @@ void MaskTo3D::callback_MaskPointCloud(
 
   // Publish the combined point cloud of all detected objects for debugging
   if (pub_debug_cloud_->get_subscription_count() > 0) {
+    combined_cloud->width = combined_cloud->points.size();
+    combined_cloud->height = 1;
+    combined_cloud->is_dense = true;
+
     sensor_msgs::msg::PointCloud2 combined_cloud_msg;
     pcl::toROSMsg(*combined_cloud, combined_cloud_msg);
     combined_cloud_msg.header = info_msg->header;
@@ -252,6 +265,10 @@ vision_msgs::msg::Detection3D MaskTo3D::processMaskClustering(
   object_pose.header.frame_id = base_frame_name_;
 
   if (mask_cloud->points.empty()) return object_pose;
+
+  mask_cloud->width = mask_cloud->points.size();
+  mask_cloud->height = 1;
+  mask_cloud->is_dense = true;
 
   // VoxelGrid filter downsamples density
   PointCloud::Ptr cloud_filtered(new PointCloud());
@@ -275,6 +292,9 @@ vision_msgs::msg::Detection3D MaskTo3D::processMaskClustering(
   for (const auto& idx : cluster_indices[0].indices) {
     main_object_cloud->points.push_back(cloud_filtered->points[idx]);
   }
+  mask_cloud = main_object_cloud;
+  main_object_cloud->height = 1;
+  main_object_cloud->is_dense = true;
   mask_cloud = main_object_cloud;
 
   Eigen::Vector4f xyz_centroid;
