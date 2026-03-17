@@ -3,6 +3,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
@@ -16,6 +17,13 @@ def generate_launch_description():
     mask_params_file = LaunchConfiguration('mask_params_file')
     bbox_params_file = LaunchConfiguration('bbox_params_file')
     keypoint_params_file = LaunchConfiguration('keypoint_params_file')
+    execute_default = LaunchConfiguration('execute_default')
+
+    execute_default_arg = DeclareLaunchArgument(
+        "execute_default",
+        default_value="False",
+        description="Whether to start the nodes in the default state (configured and active) or not (unconfigured)",
+    )
 
     mask_params_arg = DeclareLaunchArgument(
         'mask_params_file',
@@ -80,7 +88,23 @@ def generate_launch_description():
         "'/' + '", namespace, "' + '/bbox_to_3d' if '", namespace, "' else '/bbox_to_3d'",
     ])
     bbox_configure_node = ExecuteProcess(
-        cmd=['ros2', 'lifecycle', 'set', bbox_node_full_path, 'configure'],
+        cmd=[
+            'bash',
+            '-lc',
+            'until ros2 lifecycle get "$0" >/dev/null 2>&1; do sleep 0.2; done; '
+            'ros2 lifecycle set "$0" configure',
+            bbox_node_full_path,
+        ],
+        output='screen'
+    )
+    bbox_activate_node = ExecuteProcess(
+        cmd=[
+            'bash',
+            '-lc',
+            'until ros2 lifecycle get "$0" 2>/dev/null | grep -q "inactive"; do sleep 0.2; done; '
+            'ros2 lifecycle set "$0" activate',
+            bbox_node_full_path,
+        ],
         output='screen'
     )
 
@@ -88,7 +112,23 @@ def generate_launch_description():
         "'/' + '", namespace, "' + '/mask_to_3d' if '", namespace, "' else '/mask_to_3d'",
     ])
     mask_configure_node = ExecuteProcess(
-        cmd=['ros2', 'lifecycle', 'set', mask_node_full_path, 'configure'],
+        cmd=[
+            'bash',
+            '-lc',
+            'until ros2 lifecycle get "$0" >/dev/null 2>&1; do sleep 0.2; done; '
+            'ros2 lifecycle set "$0" configure',
+            mask_node_full_path,
+        ],
+        output='screen'
+    )
+    mask_activate_node = ExecuteProcess(
+        cmd=[
+            'bash',
+            '-lc',
+            'until ros2 lifecycle get "$0" 2>/dev/null | grep -q "inactive"; do sleep 0.2; done; '
+            'ros2 lifecycle set "$0" activate',
+            mask_node_full_path,
+        ],
         output='screen'
     )
 
@@ -96,17 +136,49 @@ def generate_launch_description():
         "'/' + '", namespace, "' + '/keypoint_to_3d' if '", namespace, "' else '/keypoint_to_3d'",
     ])
     keypoint_configure_node = ExecuteProcess(
-        cmd=['ros2', 'lifecycle', 'set', keypoint_node_full_path, 'configure'],
+        cmd=[
+            'bash',
+            '-lc',
+            'until ros2 lifecycle get "$0" >/dev/null 2>&1; do sleep 0.2; done; '
+            'ros2 lifecycle set "$0" configure',
+            keypoint_node_full_path,
+        ],
+        output='screen'
+    )
+    keypoint_activate_node = ExecuteProcess(
+        cmd=[
+            'bash',
+            '-lc',
+            'until ros2 lifecycle get "$0" 2>/dev/null | grep -q "inactive"; do sleep 0.2; done; '
+            'ros2 lifecycle set "$0" activate',
+            keypoint_node_full_path,
+        ],
         output='screen'
     )
 
     return LaunchDescription([
+        execute_default_arg,
         mask_params_arg,
         bbox_params_arg,
         keypoint_params_arg,
         namespace_cmd,
         container,
-        TimerAction(period=0.5, actions=[bbox_configure_node]),
-        TimerAction(period=0.5, actions=[mask_configure_node]),
-        TimerAction(period=0.5, actions=[keypoint_configure_node]),
+        TimerAction(period=0.1, actions=[bbox_configure_node]),
+        TimerAction(period=0.1, actions=[mask_configure_node]),
+        TimerAction(period=0.1, actions=[keypoint_configure_node]),
+        TimerAction(
+            period=0.2,
+            actions=[bbox_activate_node],
+            condition=IfCondition(execute_default),
+        ),
+        TimerAction(
+            period=0.2,
+            actions=[mask_activate_node],
+            condition=IfCondition(execute_default),
+        ),
+        TimerAction(
+            period=0.2,
+            actions=[keypoint_activate_node],
+            condition=IfCondition(execute_default),
+        ),
     ])
