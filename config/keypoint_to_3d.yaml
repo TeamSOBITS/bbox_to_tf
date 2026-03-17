@@ -1,7 +1,7 @@
 /**/keypoint_to_3d:
   ros__parameters:
     base_frame_name: "base_footprint"
-    keypoint_topic_name: "yolo_ros/keypoints"
+    keypoint_topic_name: "yolo_ros/object_keypoints"
     cloud_topic_name: "head_camera/depth/color/points"
     depth_image_topic_name: "head_camera/depth/image_rect_raw"
     info_topic_name: "head_camera/depth/camera_info"
