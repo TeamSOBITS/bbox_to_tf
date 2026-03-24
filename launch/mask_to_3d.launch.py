@@ -10,7 +10,7 @@ from launch_ros.descriptions import ComposableNode
 
 def generate_launch_description():
     pkg_dir = get_package_share_directory('image_to_position')
-    default_params_file = os.path.join(pkg_dir, 'config', 'keypoint_to_3d.yaml')
+    default_params_file = os.path.join(pkg_dir, 'config', 'mask_to_3d.yaml')
     
     params_file = LaunchConfiguration('params_file')
     execute_default = LaunchConfiguration('execute_default')
@@ -33,15 +33,15 @@ def generate_launch_description():
     )
 
     container = ComposableNodeContainer(
-        name='keypoint_container',
+        name='mask_container',
         namespace=namespace,
         package='rclcpp_components',
         executable='component_container',
         composable_node_descriptions=[
             ComposableNode(
                 package='image_to_position',
-                plugin='image_to_position::KeypointTo3D',
-                name='keypoint_to_3d',
+                plugin='image_to_position::MaskTo3D',
+                name='mask_to_3d',
                 namespace=namespace,
                 parameters=[params_file],
                 extra_arguments=[{'use_intra_process_comms': True}]
@@ -51,7 +51,7 @@ def generate_launch_description():
     )
 
     node_full_path = PythonExpression([
-        "'/' + '", namespace, "' + '/keypoint_to_3d' if '", namespace, "' else '/keypoint_to_3d'",
+        "'/' + '", namespace, "' + '/mask_to_3d' if '", namespace, "' else '/mask_to_3d'",
     ])
 
     configure_node = ExecuteProcess(
@@ -74,6 +74,7 @@ def generate_launch_description():
         ],
         output='screen'
     )
+
 
     return LaunchDescription([
         params_file_arg,
