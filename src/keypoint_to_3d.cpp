@@ -18,7 +18,7 @@ KeypointTo3D::KeypointTo3D(const rclcpp::NodeOptions & options)
 : LifecycleNode("keypoint_to_3d", options)
 {
   this->declare_parameter("base_frame_name", "base_footprint");
-  this->declare_parameter("keypoints_topic_name", "pose_array");
+  this->declare_parameter("keypoint_topic_name", "pose_array");
   this->declare_parameter("cloud_topic_name", "dummy_pointcloud");
   this->declare_parameter("depth_image_topic_name", "dummy_image");
   this->declare_parameter("info_topic_name", "dummy_info");
@@ -39,7 +39,7 @@ KeypointTo3D::KeypointTo3D(const rclcpp::NodeOptions & options)
 CallbackReturn KeypointTo3D::on_configure(const rclcpp_lifecycle::State &)
 {
   base_frame_name_ = this->get_parameter("base_frame_name").as_string();
-  keypoint_2d_topic_name_ = this->get_parameter("keypoints_topic_name").as_string();
+  keypoint_2d_topic_name_ = this->get_parameter("keypoint_topic_name").as_string();
   cloud_topic_name_ = this->get_parameter("cloud_topic_name").as_string();
   depth_topic_name_ = this->get_parameter("depth_image_topic_name").as_string();
   info_topic_name_ = this->get_parameter("info_topic_name").as_string();
