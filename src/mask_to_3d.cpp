@@ -1,5 +1,7 @@
 #include "image_to_position/mask_to_3d.hpp"
 
+#include <algorithm>
+
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/transforms.hpp>
 #include <pcl/common/impl/centroid.hpp>
@@ -100,7 +102,7 @@ CallbackReturn MaskTo3D::on_configure(const rclcpp_lifecycle::State &)
 CallbackReturn MaskTo3D::on_activate(const rclcpp_lifecycle::State &)
 {
   RCLCPP_INFO(this->get_logger(), "Activating MaskTo3D Node...");
-  
+
   pub_obj_poses_->on_activate();
   pub_debug_cloud_->on_activate();
 
@@ -110,9 +112,12 @@ CallbackReturn MaskTo3D::on_activate(const rclcpp_lifecycle::State &)
   rclcpp::SubscriptionOptions sub_options;
   sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
 
-  sub_masks_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::DetectMaskArray, rclcpp_lifecycle::LifecycleNode>>(this, mask_topic_name_, sensor_qos);
-  sub_pcl_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2, rclcpp_lifecycle::LifecycleNode>>(this, cloud_topic_name_, sensor_qos);
-  sub_info_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo, rclcpp_lifecycle::LifecycleNode>>(this, info_topic_name_, sensor_qos);
+  sub_masks_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::DetectMaskArray,
+      rclcpp_lifecycle::LifecycleNode>>(this, mask_topic_name_, sensor_qos);
+  sub_pcl_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2,
+      rclcpp_lifecycle::LifecycleNode>>(this, cloud_topic_name_, sensor_qos);
+  sub_info_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo,
+      rclcpp_lifecycle::LifecycleNode>>(this, info_topic_name_, sensor_qos);
 
   sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<MaskCloudSyncPolicy>>(
     MaskCloudSyncPolicy(200), *sub_masks_, *sub_pcl_, *sub_info_);
@@ -145,7 +150,7 @@ CallbackReturn MaskTo3D::on_cleanup(const rclcpp_lifecycle::State &)
   tfListener_.reset();
   tfBroadcaster_.reset();
   kdtree_.reset();
-  
+
   return CallbackReturn::SUCCESS;
 }
 
@@ -158,14 +163,15 @@ CallbackReturn MaskTo3D::on_shutdown(const rclcpp_lifecycle::State &)
   sub_info_.reset();
   pub_obj_poses_.reset();
   pub_debug_cloud_.reset();
-  
+
   return CallbackReturn::SUCCESS;
 }
 
-bool MaskTo3D::isRealisticPoint(const pcl::PointXYZ& pt) const {
-  return pcl::isFinite(pt) && 
-         pt.x >= x_min_ && pt.x <= x_max_ && 
-         pt.y >= y_min_ && pt.y <= y_max_ && 
+bool MaskTo3D::isRealisticPoint(const pcl::PointXYZ & pt) const
+{
+  return pcl::isFinite(pt) &&
+         pt.x >= x_min_ && pt.x <= x_max_ &&
+         pt.y >= y_min_ && pt.y <= y_max_ &&
          pt.z >= z_min_ && pt.z <= z_max_;
 }
 
@@ -181,9 +187,9 @@ void MaskTo3D::callback_MaskPointCloud(
   geometry_msgs::msg::TransformStamped transformStamped;
   try {
     transformStamped = tfBuffer_->lookupTransform(
-      base_frame_name_, pcl_msg->header.frame_id, 
+      base_frame_name_, pcl_msg->header.frame_id,
       pcl_msg->header.stamp, rclcpp::Duration::from_seconds(0.1));
-  } catch (tf2::TransformException &ex) {
+  } catch (tf2::TransformException & ex) {
     RCLCPP_WARN(this->get_logger(), "TF Error: %s", ex.what());
     return;
   }
@@ -204,25 +210,25 @@ void MaskTo3D::callback_MaskPointCloud(
     mask_cloud_base->clear();
     mask_cloud_optical->header.frame_id = pcl_msg->header.frame_id;
 
-    const auto& mask = mask_msg->masks[i];
+    const auto & mask = mask_msg->masks[i];
 
     // Extract points belonging to the mask in the optical frame
     for (size_t j = 0; j < mask.pixel_x.size(); ++j) {
       int index = mask.pixel_y[j] * info_msg->width + mask.pixel_x[j];
       if (index >= 0 && index < static_cast<int>(cloud_src_optical->points.size())) {
-        const auto& pt = cloud_src_optical->points[index];
+        const auto & pt = cloud_src_optical->points[index];
         if (isRealisticPoint(pt)) {
           mask_cloud_optical->points.push_back(pt);
         }
       }
     }
 
-    if (mask_cloud_optical->points.empty()) continue;
+    if (mask_cloud_optical->points.empty()) {continue;}
 
     mask_cloud_optical->width = mask_cloud_optical->points.size();
     mask_cloud_optical->height = 1;
     mask_cloud_optical->is_dense = true;
-  
+
     // Transform the extracted mask points to the base footprint
     pcl_ros::transformPointCloud(*mask_cloud_optical, *mask_cloud_base, transformStamped);
     mask_cloud_base->header.frame_id = base_frame_name_;
@@ -231,7 +237,8 @@ void MaskTo3D::callback_MaskPointCloud(
     mask_cloud_base->is_dense = true;
 
     // Process Clustering
-    vision_msgs::msg::Detection3D object_pose = processMaskClustering(mask, info_msg, mask_cloud_base);
+    vision_msgs::msg::Detection3D object_pose = processMaskClustering(mask, info_msg,
+        mask_cloud_base);
 
     if (!object_pose.results.empty()) {
       object_pose_array.detections.push_back(object_pose);
@@ -256,15 +263,15 @@ void MaskTo3D::callback_MaskPointCloud(
 }
 
 vision_msgs::msg::Detection3D MaskTo3D::processMaskClustering(
-  const sobits_interfaces::msg::DetectMask& mask,
-  const std::shared_ptr<sensor_msgs::msg::CameraInfo>& info_msg,
-  PointCloud::Ptr& mask_cloud)
+  const sobits_interfaces::msg::DetectMask & mask,
+  const std::shared_ptr<sensor_msgs::msg::CameraInfo> & info_msg,
+  PointCloud::Ptr & mask_cloud)
 {
   vision_msgs::msg::Detection3D object_pose;
   object_pose.header = info_msg->header;
   object_pose.header.frame_id = base_frame_name_;
 
-  if (mask_cloud->points.empty()) return object_pose;
+  if (mask_cloud->points.empty()) {return object_pose;}
 
   mask_cloud->width = mask_cloud->points.size();
   mask_cloud->height = 1;
@@ -277,7 +284,7 @@ vision_msgs::msg::Detection3D MaskTo3D::processMaskClustering(
   vg.setLeafSize(voxel_leaf_size_, voxel_leaf_size_, voxel_leaf_size_);
   vg.filter(*cloud_filtered);
 
-  if (cloud_filtered->points.empty()) return object_pose;
+  if (cloud_filtered->points.empty()) {return object_pose;}
 
   // Cluster to remove background noise (edges of mask bleeding onto background)
   kdtree_->setInputCloud(cloud_filtered);
@@ -285,11 +292,11 @@ vision_msgs::msg::Detection3D MaskTo3D::processMaskClustering(
   std::vector<pcl::PointIndices> cluster_indices;
   euclid_clustering_.extract(cluster_indices);
 
-  if (cluster_indices.empty()) return object_pose;
+  if (cluster_indices.empty()) {return object_pose;}
 
   // Isolate the largest cluster as the main object
   PointCloud::Ptr main_object_cloud(new PointCloud());
-  for (const auto& idx : cluster_indices[0].indices) {
+  for (const auto & idx : cluster_indices[0].indices) {
     main_object_cloud->points.push_back(cloud_filtered->points[idx]);
   }
   mask_cloud = main_object_cloud;
@@ -299,7 +306,7 @@ vision_msgs::msg::Detection3D MaskTo3D::processMaskClustering(
 
   Eigen::Vector4f xyz_centroid;
   pcl::compute3DCentroid(*mask_cloud, xyz_centroid);
-  
+
   Eigen::Vector4f min_pt, max_pt;
   pcl::getMinMax3D(*mask_cloud, min_pt, max_pt);
 
@@ -310,26 +317,30 @@ vision_msgs::msg::Detection3D MaskTo3D::processMaskClustering(
   obj_pose.orientation.w = 1.0;
 
   if (!mask.results.empty()) {
-      object_pose.results.push_back(mask.results[0]);
+    object_pose.results.push_back(mask.results[0]);
   }
-  
+
   object_pose.bbox.center = obj_pose;
   object_pose.bbox.size.x = max_pt.x() - min_pt.x();
   object_pose.bbox.size.y = max_pt.y() - min_pt.y();
   object_pose.bbox.size.z = max_pt.z() - min_pt.z();
-  object_pose.id = mask.results.empty() ? "" : mask.results[0].hypothesis.class_id + "_" + mask.instance_id;
-  
+  object_pose.id = mask.results.empty() ? "" : mask.results[0].hypothesis.class_id + "_" +
+    mask.instance_id;
+
   publishObjectTf(obj_pose, object_pose.id);
 
   return object_pose;
 }
 
-void MaskTo3D::publishObjectTf(const geometry_msgs::msg::Pose &pose, const std::string &object_id)
+void MaskTo3D::publishObjectTf(const geometry_msgs::msg::Pose & pose, const std::string & object_id)
 {
   geometry_msgs::msg::TransformStamped t;
   t.header.stamp = this->now();
   t.header.frame_id = base_frame_name_;
-  t.child_frame_id = object_id.empty() ? "mask_object" : object_id;
+  // Sanitize frame ID: spaces are not valid in TF2 frame names
+  std::string frame_id = object_id.empty() ? "mask_object" : object_id;
+  std::replace(frame_id.begin(), frame_id.end(), ' ', '_');
+  t.child_frame_id = frame_id;
   t.transform.translation.x = pose.position.x;
   t.transform.translation.y = pose.position.y;
   t.transform.translation.z = pose.position.z;
