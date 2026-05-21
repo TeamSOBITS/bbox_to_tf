@@ -13,20 +13,20 @@ def generate_launch_description():
     default_params_file = os.path.join(pkg_dir, 'config', 'bbox_to_3d.yaml')
     
     params_file = LaunchConfiguration('params_file')
-    auto_configure_3d = LaunchConfiguration('auto_configure_3d')
-    auto_activate_3d = LaunchConfiguration('auto_activate_3d')
+    auto_configure = LaunchConfiguration('auto_configure')
+    auto_activate = LaunchConfiguration('auto_activate')
     params_file_arg = DeclareLaunchArgument(
         'params_file',
         default_value=default_params_file,
         description='Full path to the ROS2 parameters file to use'
     )
-    auto_configure_3d_arg = DeclareLaunchArgument(
-        'auto_configure_3d',
+    auto_configure_arg = DeclareLaunchArgument(
+        'auto_configure',
         default_value='False',
         description='Whether to configure the lifecycle node on startup'
     )
-    auto_activate_3d_arg = DeclareLaunchArgument(
-        'auto_activate_3d',
+    auto_activate_arg = DeclareLaunchArgument(
+        'auto_activate',
         default_value='False',
         description='Whether to activate the lifecycle node on startup'
     )
@@ -83,18 +83,18 @@ def generate_launch_description():
 
     return LaunchDescription([
         params_file_arg,
-        auto_configure_3d_arg,
-        auto_activate_3d_arg,
+        auto_configure_arg,
+        auto_activate_arg,
         namespace_cmd,
         container,
         TimerAction(
             period=0.1,
             actions=[configure_node],
-            condition=IfCondition(OrSubstitution(auto_configure_3d, auto_activate_3d)),
+            condition=IfCondition(OrSubstitution(auto_configure, auto_activate)),
         ),
         TimerAction(
             period=0.2,
             actions=[activate_node],
-            condition=IfCondition(auto_activate_3d),
+            condition=IfCondition(auto_activate),
         ),
     ])

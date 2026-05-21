@@ -17,16 +17,16 @@ def generate_launch_description():
     mask_params_file = LaunchConfiguration('mask_params_file')
     bbox_params_file = LaunchConfiguration('bbox_params_file')
     keypoint_params_file = LaunchConfiguration('keypoint_params_file')
-    auto_configure_3d = LaunchConfiguration('auto_configure_3d')
-    auto_activate_3d = LaunchConfiguration('auto_activate_3d')
+    auto_configure = LaunchConfiguration('auto_configure')
+    auto_activate = LaunchConfiguration('auto_activate')
 
-    auto_configure_3d_arg = DeclareLaunchArgument(
-        "auto_configure_3d",
+    auto_configure_arg = DeclareLaunchArgument(
+        "auto_configure",
         default_value="False",
         description="Whether to configure lifecycle nodes on startup",
     )
-    auto_activate_3d_arg = DeclareLaunchArgument(
-        "auto_activate_3d",
+    auto_activate_arg = DeclareLaunchArgument(
+        "auto_activate",
         default_value="False",
         description="Whether to activate lifecycle nodes on startup",
     )
@@ -163,8 +163,8 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        auto_configure_3d_arg,
-        auto_activate_3d_arg,
+        auto_configure_arg,
+        auto_activate_arg,
         mask_params_arg,
         bbox_params_arg,
         keypoint_params_arg,
@@ -173,31 +173,31 @@ def generate_launch_description():
         TimerAction(
             period=0.1,
             actions=[bbox_configure_node],
-            condition=IfCondition(OrSubstitution(auto_configure_3d, auto_activate_3d)),
+            condition=IfCondition(OrSubstitution(auto_configure, auto_activate)),
         ),
         TimerAction(
             period=0.1,
             actions=[mask_configure_node],
-            condition=IfCondition(OrSubstitution(auto_configure_3d, auto_activate_3d)),
+            condition=IfCondition(OrSubstitution(auto_configure, auto_activate)),
         ),
         TimerAction(
             period=0.1,
             actions=[keypoint_configure_node],
-            condition=IfCondition(OrSubstitution(auto_configure_3d, auto_activate_3d)),
+            condition=IfCondition(OrSubstitution(auto_configure, auto_activate)),
         ),
         TimerAction(
             period=0.2,
             actions=[bbox_activate_node],
-            condition=IfCondition(auto_activate_3d),
+            condition=IfCondition(auto_activate),
         ),
         TimerAction(
             period=0.2,
             actions=[mask_activate_node],
-            condition=IfCondition(auto_activate_3d),
+            condition=IfCondition(auto_activate),
         ),
         TimerAction(
             period=0.2,
             actions=[keypoint_activate_node],
-            condition=IfCondition(auto_activate_3d),
+            condition=IfCondition(auto_activate),
         ),
     ])
