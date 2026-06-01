@@ -4,7 +4,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch.substitutions import LaunchConfiguration, OrSubstitution, PythonExpression
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 
@@ -12,18 +12,25 @@ def generate_launch_description():
     pkg_dir = get_package_share_directory('image_to_position')
     default_params_file = os.path.join(pkg_dir, 'config', 'bbox_to_3d.yaml')
     
-    params_file = LaunchConfiguration('params_file')
-    execute_default = LaunchConfiguration('execute_default')
-    use_sim_time = LaunchConfiguration('use_sim_time')
+    params_file     = LaunchConfiguration('params_file')
+    auto_configure = LaunchConfiguration('auto_configure')
+    auto_activate  = LaunchConfiguration('auto_activate')
+    use_sim_time   = LaunchConfiguration('use_sim_time')
+
     params_file_arg = DeclareLaunchArgument(
         'params_file',
         default_value=default_params_file,
         description='Full path to the ROS2 parameters file to use'
     )
-    execute_default_arg = DeclareLaunchArgument(
-        'execute_default',
+    auto_configure_arg = DeclareLaunchArgument(
+        'auto_configure',
         default_value='False',
-        description='Whether to start the node in the active state or not'
+        description='Whether to configure the lifecycle node on startup'
+    )
+    auto_activate_arg = DeclareLaunchArgument(
+        'auto_activate',
+        default_value='False',
+        description='Whether to activate the lifecycle node on startup'
     )
     use_sim_time_arg = DeclareLaunchArgument(
         'use_sim_time',
@@ -83,14 +90,19 @@ def generate_launch_description():
 
     return LaunchDescription([
         params_file_arg,
-        execute_default_arg,
         use_sim_time_arg,
+        auto_configure_arg,
+        auto_activate_arg,
         namespace_cmd,
         container,
-        TimerAction(period=0.1, actions=[configure_node]),
+        TimerAction(
+            period=0.1,
+            actions=[configure_node],
+            condition=IfCondition(OrSubstitution(auto_configure, auto_activate)),
+        ),
         TimerAction(
             period=0.2,
             actions=[activate_node],
-            condition=IfCondition(execute_default),
+            condition=IfCondition(auto_activate),
         ),
     ])

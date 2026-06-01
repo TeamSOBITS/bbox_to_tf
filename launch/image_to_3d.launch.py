@@ -4,7 +4,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch.substitutions import LaunchConfiguration, OrSubstitution, PythonExpression
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
 
@@ -17,19 +17,25 @@ def generate_launch_description():
     mask_params_file = LaunchConfiguration('mask_params_file')
     bbox_params_file = LaunchConfiguration('bbox_params_file')
     keypoint_params_file = LaunchConfiguration('keypoint_params_file')
-    execute_default = LaunchConfiguration('execute_default')
+    auto_configure = LaunchConfiguration('auto_configure')
+    auto_activate = LaunchConfiguration('auto_activate')
     use_sim_time = LaunchConfiguration('use_sim_time')
+
+    auto_configure_arg = DeclareLaunchArgument(
+        "auto_configure",
+        default_value="False",
+        description="Whether to configure lifecycle nodes on startup",
+    )
+    auto_activate_arg = DeclareLaunchArgument(
+        "auto_activate",
+        default_value="False",
+        description="Whether to activate lifecycle nodes on startup",
+    )
 
     use_sim_time_arg = DeclareLaunchArgument(
         'use_sim_time',
         default_value='True',
         description='Use simulation clock.',
-    )
-
-    execute_default_arg = DeclareLaunchArgument(
-        "execute_default",
-        default_value="False",
-        description="Whether to start the nodes in the default state (configured and active) or not (unconfigured)",
     )
 
     mask_params_arg = DeclareLaunchArgument(
@@ -164,29 +170,42 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        execute_default_arg,
+        auto_configure_arg,
+        auto_activate_arg,
         use_sim_time_arg,
         mask_params_arg,
         bbox_params_arg,
         keypoint_params_arg,
         namespace_cmd,
         container,
-        TimerAction(period=0.1, actions=[bbox_configure_node]),
-        TimerAction(period=0.1, actions=[mask_configure_node]),
-        TimerAction(period=0.1, actions=[keypoint_configure_node]),
+        TimerAction(
+            period=0.1,
+            actions=[bbox_configure_node],
+            condition=IfCondition(OrSubstitution(auto_configure, auto_activate)),
+        ),
+        TimerAction(
+            period=0.1,
+            actions=[mask_configure_node],
+            condition=IfCondition(OrSubstitution(auto_configure, auto_activate)),
+        ),
+        TimerAction(
+            period=0.1,
+            actions=[keypoint_configure_node],
+            condition=IfCondition(OrSubstitution(auto_configure, auto_activate)),
+        ),
         TimerAction(
             period=0.2,
             actions=[bbox_activate_node],
-            condition=IfCondition(execute_default),
+            condition=IfCondition(auto_activate),
         ),
         TimerAction(
             period=0.2,
             actions=[mask_activate_node],
-            condition=IfCondition(execute_default),
+            condition=IfCondition(auto_activate),
         ),
         TimerAction(
             period=0.2,
             actions=[keypoint_activate_node],
-            condition=IfCondition(execute_default),
+            condition=IfCondition(auto_activate),
         ),
     ])
