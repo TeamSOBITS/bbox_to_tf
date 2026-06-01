@@ -12,9 +12,11 @@ def generate_launch_description():
     pkg_dir = get_package_share_directory('image_to_position')
     default_params_file = os.path.join(pkg_dir, 'config', 'bbox_to_3d.yaml')
     
-    params_file = LaunchConfiguration('params_file')
+    params_file     = LaunchConfiguration('params_file')
     auto_configure = LaunchConfiguration('auto_configure')
-    auto_activate = LaunchConfiguration('auto_activate')
+    auto_activate  = LaunchConfiguration('auto_activate')
+    use_sim_time   = LaunchConfiguration('use_sim_time')
+
     params_file_arg = DeclareLaunchArgument(
         'params_file',
         default_value=default_params_file,
@@ -29,6 +31,11 @@ def generate_launch_description():
         'auto_activate',
         default_value='False',
         description='Whether to activate the lifecycle node on startup'
+    )
+    use_sim_time_arg = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='True',
+        description='Use simulation clock.',
     )
 
     namespace = LaunchConfiguration("namespace")
@@ -49,7 +56,7 @@ def generate_launch_description():
                 plugin='image_to_position::BboxTo3D',
                 name='bbox_to_3d',
                 namespace=namespace,
-                parameters=[params_file],
+                parameters=[params_file, {'use_sim_time': use_sim_time}],
                 extra_arguments=[{'use_intra_process_comms': True}]
             ),
         ],
@@ -83,6 +90,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         params_file_arg,
+        use_sim_time_arg,
         auto_configure_arg,
         auto_activate_arg,
         namespace_cmd,
