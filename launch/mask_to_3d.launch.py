@@ -14,6 +14,7 @@ def generate_launch_description():
     
     params_file = LaunchConfiguration('params_file')
     execute_default = LaunchConfiguration('execute_default')
+    use_sim_time = LaunchConfiguration('use_sim_time')
     params_file_arg = DeclareLaunchArgument(
         'params_file',
         default_value=default_params_file,
@@ -23,6 +24,11 @@ def generate_launch_description():
         'execute_default',
         default_value='False',
         description='Whether to start the node in the active state or not'
+    )
+    use_sim_time_arg = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='True',
+        description='Use simulation clock.',
     )
 
     namespace = LaunchConfiguration("namespace")
@@ -43,7 +49,7 @@ def generate_launch_description():
                 plugin='image_to_position::MaskTo3D',
                 name='mask_to_3d',
                 namespace=namespace,
-                parameters=[params_file],
+                parameters=[params_file, {'use_sim_time': use_sim_time}],
                 extra_arguments=[{'use_intra_process_comms': True}]
             ),
         ],
@@ -79,6 +85,7 @@ def generate_launch_description():
     return LaunchDescription([
         params_file_arg,
         execute_default_arg,
+        use_sim_time_arg,
         namespace_cmd,
         container,
         TimerAction(period=0.1, actions=[configure_node]),

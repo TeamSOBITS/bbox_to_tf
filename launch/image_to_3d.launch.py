@@ -18,6 +18,13 @@ def generate_launch_description():
     bbox_params_file = LaunchConfiguration('bbox_params_file')
     keypoint_params_file = LaunchConfiguration('keypoint_params_file')
     execute_default = LaunchConfiguration('execute_default')
+    use_sim_time = LaunchConfiguration('use_sim_time')
+
+    use_sim_time_arg = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='True',
+        description='Use simulation clock.',
+    )
 
     execute_default_arg = DeclareLaunchArgument(
         "execute_default",
@@ -61,7 +68,7 @@ def generate_launch_description():
                 plugin='image_to_position::BboxTo3D',
                 name='bbox_to_3d',
                 namespace=namespace,
-                parameters=[bbox_params_file],
+                parameters=[bbox_params_file, {'use_sim_time': use_sim_time}],
                 extra_arguments=[{'use_intra_process_comms': True}]
             ),
             ComposableNode(
@@ -69,7 +76,7 @@ def generate_launch_description():
                 plugin='image_to_position::MaskTo3D',
                 name='mask_to_3d',
                 namespace=namespace,
-                parameters=[mask_params_file],
+                parameters=[mask_params_file, {'use_sim_time': use_sim_time}],
                 extra_arguments=[{'use_intra_process_comms': True}]
             ),
             ComposableNode(
@@ -77,7 +84,7 @@ def generate_launch_description():
                 plugin='image_to_position::KeypointTo3D',
                 name='keypoint_to_3d',
                 namespace=namespace,
-                parameters=[keypoint_params_file],
+                parameters=[keypoint_params_file, {'use_sim_time': use_sim_time}],
                 extra_arguments=[{'use_intra_process_comms': True}]
             ),
         ],
@@ -158,6 +165,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         execute_default_arg,
+        use_sim_time_arg,
         mask_params_arg,
         bbox_params_arg,
         keypoint_params_arg,
