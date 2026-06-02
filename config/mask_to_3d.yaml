@@ -1,10 +1,18 @@
 /**/mask_to_3d:
   ros__parameters:
     base_frame_name: "base_footprint"
-    mask_topic_name: "sam3_ros/object_masks"
-    cloud_topic_name: "head_camera/depth/color/points"
+    mask_topic_name: "sam3_node/object_masks"
+    cloud_topic_name: "head_camera/depth/points"
     # depth_image_topic_name: "head_camera/depth/image_rect_raw" # TODO: Add depth image option
     info_topic_name: "head_camera/depth/camera_info"
+
+    # QoS reliability for each subscriber ("reliable" or "best_effort").
+    # SAM3 publishes masks as RELIABLE. Depth camera topics are BEST_EFFORT sensor streams.
+    mask_reliability:  "reliable"
+    cloud_reliability: "best_effort"
+    info_reliability:  "best_effort"
+    poses_pub_reliability: "reliable"
+    cloud_pub_reliability: "reliable"
 
     # Options (TODO)
     # positioning_detection_mode: "point_cloud" # Options: "point_cloud", "fast_point", "depth_image"

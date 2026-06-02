@@ -71,6 +71,11 @@ private:
   std::string mask_topic_name_;
   std::string cloud_topic_name_;
   std::string info_topic_name_;
+  std::string mask_reliability_;
+  std::string cloud_reliability_;
+  std::string info_reliability_;
+  std::string poses_pub_reliability_;
+  std::string cloud_pub_reliability_;
 
   double x_min_, x_max_;
   double y_min_, y_max_;

@@ -22,6 +22,11 @@ MaskTo3D::MaskTo3D(const rclcpp::NodeOptions & options)
   this->declare_parameter("mask_topic_name", "/masks_array");
   this->declare_parameter("cloud_topic_name", "/point_cloud");
   this->declare_parameter("info_topic_name", "/camera_info");
+  this->declare_parameter("mask_reliability",       "reliable");
+  this->declare_parameter("cloud_reliability",      "best_effort");
+  this->declare_parameter("info_reliability",       "best_effort");
+  this->declare_parameter("poses_pub_reliability",  "reliable");
+  this->declare_parameter("cloud_pub_reliability",  "reliable");
 
   this->declare_parameter("x_min", -10.0);
   this->declare_parameter("x_max", 10.0);
@@ -41,10 +46,15 @@ MaskTo3D::MaskTo3D(const rclcpp::NodeOptions & options)
 
 CallbackReturn MaskTo3D::on_configure(const rclcpp_lifecycle::State &)
 {
-  base_frame_name_ = this->get_parameter("base_frame_name").as_string();
-  mask_topic_name_ = this->get_parameter("mask_topic_name").as_string();
-  cloud_topic_name_ = this->get_parameter("cloud_topic_name").as_string();
-  info_topic_name_ = this->get_parameter("info_topic_name").as_string();
+  base_frame_name_   = this->get_parameter("base_frame_name").as_string();
+  mask_topic_name_   = this->get_parameter("mask_topic_name").as_string();
+  cloud_topic_name_  = this->get_parameter("cloud_topic_name").as_string();
+  info_topic_name_   = this->get_parameter("info_topic_name").as_string();
+  mask_reliability_       = this->get_parameter("mask_reliability").as_string();
+  cloud_reliability_      = this->get_parameter("cloud_reliability").as_string();
+  info_reliability_       = this->get_parameter("info_reliability").as_string();
+  poses_pub_reliability_  = this->get_parameter("poses_pub_reliability").as_string();
+  cloud_pub_reliability_  = this->get_parameter("cloud_pub_reliability").as_string();
 
   x_min_ = this->get_parameter("x_min").as_double();
   x_max_ = this->get_parameter("x_max").as_double();
@@ -65,8 +75,9 @@ CallbackReturn MaskTo3D::on_configure(const rclcpp_lifecycle::State &)
 
   RCLCPP_INFO(this->get_logger(), "Base Frame Name: %s", base_frame_name_.c_str());
   RCLCPP_INFO(this->get_logger(), "Mask Topic Name: %s", mask_topic_name_.c_str());
-  RCLCPP_INFO(this->get_logger(), "Cloud Topic Name: %s", cloud_topic_name_.c_str());
-  RCLCPP_INFO(this->get_logger(), "Info Topic Name: %s", info_topic_name_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Cloud Topic Name: %s [%s]", cloud_topic_name_.c_str(), cloud_reliability_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Info Topic Name: %s [%s]", info_topic_name_.c_str(), info_reliability_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Mask Topic Name: %s [%s]", mask_topic_name_.c_str(), mask_reliability_.c_str());
 
   RCLCPP_INFO(this->get_logger(), "Clipping Bounds:");
   RCLCPP_INFO(this->get_logger(), "  x: [%f, %f]", x_min_, x_max_);
@@ -91,10 +102,19 @@ CallbackReturn MaskTo3D::on_configure(const rclcpp_lifecycle::State &)
   euclid_clustering_.setMaxClusterSize(max_cluster_size_);
   euclid_clustering_.setSearchMethod(kdtree_);
 
+  auto pub_qos = [](const std::string & reliability, size_t depth) -> rclcpp::QoS {
+    auto q = rclcpp::QoS(rclcpp::KeepLast(depth));
+    q.reliability(reliability == "reliable"
+      ? RMW_QOS_POLICY_RELIABILITY_RELIABLE
+      : RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
+    return q;
+  };
   pub_obj_poses_ = this->create_publisher<vision_msgs::msg::Detection3DArray>(
-    this->get_name() + std::string("/object_3d_poses"), 5);
+    this->get_name() + std::string("/object_3d_poses"), pub_qos(poses_pub_reliability_, 5));
   pub_debug_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
-    this->get_name() + std::string("/object_3d_cloud"), 1);
+    this->get_name() + std::string("/object_3d_cloud"), pub_qos(cloud_pub_reliability_, 1));
+  RCLCPP_INFO(this->get_logger(), "Poses publisher: [%s]", poses_pub_reliability_.c_str());
+  RCLCPP_INFO(this->get_logger(), "Cloud publisher: [%s]", cloud_pub_reliability_.c_str());
 
   return CallbackReturn::SUCCESS;
 }
@@ -106,18 +126,26 @@ CallbackReturn MaskTo3D::on_activate(const rclcpp_lifecycle::State &)
   pub_obj_poses_->on_activate();
   pub_debug_cloud_->on_activate();
 
-  rmw_qos_profile_t sensor_qos = rmw_qos_profile_sensor_data;
+  auto make_qos = [](const std::string & reliability) -> rmw_qos_profile_t {
+    rmw_qos_profile_t qos = rmw_qos_profile_sensor_data;
+    qos.reliability = (reliability == "reliable")
+      ? RMW_QOS_POLICY_RELIABILITY_RELIABLE
+      : RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT;
+    return qos;
+  };
 
-  // Enable IPC explicitly for the subscriber
+  // Use a reentrant callback group so message_filters callbacks fire in
+  // component_container_mt (MultiThreadedExecutor).
+  auto cb_group = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
   rclcpp::SubscriptionOptions sub_options;
-  sub_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Enable;
+  sub_options.callback_group = cb_group;
 
   sub_masks_ = std::make_shared<message_filters::Subscriber<sobits_interfaces::msg::DetectMaskArray,
-      rclcpp_lifecycle::LifecycleNode>>(this, mask_topic_name_, sensor_qos);
+      rclcpp_lifecycle::LifecycleNode>>(this, mask_topic_name_, make_qos(mask_reliability_), sub_options);
   sub_pcl_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2,
-      rclcpp_lifecycle::LifecycleNode>>(this, cloud_topic_name_, sensor_qos);
+      rclcpp_lifecycle::LifecycleNode>>(this, cloud_topic_name_, make_qos(cloud_reliability_), sub_options);
   sub_info_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo,
-      rclcpp_lifecycle::LifecycleNode>>(this, info_topic_name_, sensor_qos);
+      rclcpp_lifecycle::LifecycleNode>>(this, info_topic_name_, make_qos(info_reliability_), sub_options);
 
   sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<MaskCloudSyncPolicy>>(
     MaskCloudSyncPolicy(200), *sub_masks_, *sub_pcl_, *sub_info_);
@@ -183,12 +211,14 @@ void MaskTo3D::callback_MaskPointCloud(
   PointCloud::Ptr cloud_src_optical(new PointCloud());
   pcl::fromROSMsg(*pcl_msg, *cloud_src_optical);
 
-  // Lookup TF transform once per callback
+  // Lookup TF transform once per callback.
+  // Use tf2::TimePointZero (latest available) to avoid extrapolation errors
+  // when the TF buffer is newly populated after lifecycle activation.
   geometry_msgs::msg::TransformStamped transformStamped;
   try {
     transformStamped = tfBuffer_->lookupTransform(
       base_frame_name_, pcl_msg->header.frame_id,
-      pcl_msg->header.stamp, rclcpp::Duration::from_seconds(0.1));
+      tf2::TimePointZero);
   } catch (tf2::TransformException & ex) {
     RCLCPP_WARN(this->get_logger(), "TF Error: %s", ex.what());
     return;
