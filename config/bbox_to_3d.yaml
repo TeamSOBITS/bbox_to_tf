@@ -9,6 +9,7 @@
     # Options
     positioning_detection_mode: "point_cloud" # Options: "point_cloud", "fast_point", "depth_image"
     enable_id: false
+    enable_auto_rotation: false
 
     # Clipping box parameters (respect to camera frame)
     x_min: 0.0
