@@ -144,11 +144,23 @@ CallbackReturn MaskTo3D::on_activate(const rclcpp_lifecycle::State &)
       rclcpp_lifecycle::LifecycleNode>>(this, mask_topic_name_, make_qos(mask_reliability_), sub_options);
   sub_pcl_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::PointCloud2,
       rclcpp_lifecycle::LifecycleNode>>(this, cloud_topic_name_, make_qos(cloud_reliability_), sub_options);
-  sub_info_ = std::make_shared<message_filters::Subscriber<sensor_msgs::msg::CameraInfo,
-      rclcpp_lifecycle::LifecycleNode>>(this, info_topic_name_, make_qos(info_reliability_), sub_options);
 
+  // camera_info is static intrinsics
+  auto info_qos = rclcpp::QoS(rclcpp::KeepLast(1));
+  info_qos.reliability(info_reliability_ == "reliable"
+    ? RMW_QOS_POLICY_RELIABILITY_RELIABLE
+    : RMW_QOS_POLICY_RELIABILITY_BEST_EFFORT);
+  sub_info_plain_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
+    info_topic_name_, info_qos,
+    [this](const sensor_msgs::msg::CameraInfo::ConstSharedPtr msg) {
+      std::lock_guard<std::mutex> lk(info_mutex_);
+      latest_info_ = msg;
+    }, sub_options);
+
+  // 2-way mask⊗cloud sync
   sync_point_cloud_ = std::make_shared<message_filters::Synchronizer<MaskCloudSyncPolicy>>(
-    MaskCloudSyncPolicy(200), *sub_masks_, *sub_pcl_, *sub_info_);
+    MaskCloudSyncPolicy(200), *sub_masks_, *sub_pcl_);
+  sync_point_cloud_->setMaxIntervalDuration(rclcpp::Duration::from_seconds(2.0));
   sync_point_cloud_->registerCallback(&MaskTo3D::callback_MaskPointCloud, this);
 
   return CallbackReturn::SUCCESS;
@@ -164,7 +176,8 @@ CallbackReturn MaskTo3D::on_deactivate(const rclcpp_lifecycle::State &)
   sync_point_cloud_.reset();
   sub_masks_.reset();
   sub_pcl_.reset();
-  sub_info_.reset();
+  sub_info_plain_.reset();
+  latest_info_.reset();
 
   return CallbackReturn::SUCCESS;
 }
@@ -188,7 +201,8 @@ CallbackReturn MaskTo3D::on_shutdown(const rclcpp_lifecycle::State &)
   sync_point_cloud_.reset();
   sub_masks_.reset();
   sub_pcl_.reset();
-  sub_info_.reset();
+  sub_info_plain_.reset();
+  latest_info_.reset();
   pub_obj_poses_.reset();
   pub_debug_cloud_.reset();
 
@@ -205,9 +219,20 @@ bool MaskTo3D::isRealisticPoint(const pcl::PointXYZ & pt) const
 
 void MaskTo3D::callback_MaskPointCloud(
   const std::shared_ptr<sobits_interfaces::msg::DetectMaskArray> mask_msg,
-  const std::shared_ptr<sensor_msgs::msg::PointCloud2> pcl_msg,
-  const std::shared_ptr<sensor_msgs::msg::CameraInfo> info_msg)
+  const std::shared_ptr<sensor_msgs::msg::PointCloud2> pcl_msg)
 {
+  // camera_info comes from the latched plain subscription, not the sync.
+  sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg;
+  {
+    std::lock_guard<std::mutex> lk(info_mutex_);
+    info_msg = latest_info_;
+  }
+  if (!info_msg) {
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 2000,
+      "MaskTo3D: no camera_info received yet; skipping frame");
+    return;
+  }
+
   PointCloud::Ptr cloud_src_optical(new PointCloud());
   pcl::fromROSMsg(*pcl_msg, *cloud_src_optical);
 
@@ -294,7 +319,7 @@ void MaskTo3D::callback_MaskPointCloud(
 
 vision_msgs::msg::Detection3D MaskTo3D::processMaskClustering(
   const sobits_interfaces::msg::DetectMask & mask,
-  const std::shared_ptr<sensor_msgs::msg::CameraInfo> & info_msg,
+  const sensor_msgs::msg::CameraInfo::ConstSharedPtr & info_msg,
   PointCloud::Ptr & mask_cloud)
 {
   vision_msgs::msg::Detection3D object_pose;

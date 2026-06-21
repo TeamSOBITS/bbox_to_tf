@@ -12,6 +12,8 @@
 #include <message_filters/sync_policies/approximate_time.h>
 #include <message_filters/synchronizer.h>
 
+#include <mutex>
+
 #include <pcl/point_types.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
@@ -42,21 +44,23 @@ public:
 private:
   using PointT = pcl::PointXYZ;
   using PointCloud = pcl::PointCloud<PointT>;
+  // camera_info is static intrinsics — it is NOT part of the sync (a 3-way
+  // ApproximateTime over mask⊗cloud⊗info never matched: the SAM3 mask stamp lags
+  // the live cloud/info streams by ~2.5 s, so no coherent triple ever formed and
+  // the callback never fired → zero 3D output). info is now latched separately.
   using MaskCloudSyncPolicy = message_filters::sync_policies::ApproximateTime<
-    sobits_interfaces::msg::DetectMaskArray, 
-    sensor_msgs::msg::PointCloud2, 
-    sensor_msgs::msg::CameraInfo>;
+    sobits_interfaces::msg::DetectMaskArray,
+    sensor_msgs::msg::PointCloud2>;
 
   // Callbacks
   void callback_MaskPointCloud(
     const std::shared_ptr<sobits_interfaces::msg::DetectMaskArray> mask_msg,
-    const std::shared_ptr<sensor_msgs::msg::PointCloud2> pcl_msg,
-    const std::shared_ptr<sensor_msgs::msg::CameraInfo> info_msg);
+    const std::shared_ptr<sensor_msgs::msg::PointCloud2> pcl_msg);
 
   // Processing Methods
   vision_msgs::msg::Detection3D processMaskClustering(
     const sobits_interfaces::msg::DetectMask& mask,
-    const std::shared_ptr<sensor_msgs::msg::CameraInfo>& info_msg,
+    const sensor_msgs::msg::CameraInfo::ConstSharedPtr& info_msg,
     PointCloud::Ptr& mask_cloud);
 
   void publishObjectTf(const geometry_msgs::msg::Pose &pose, const std::string &object_id);
@@ -94,8 +98,12 @@ private:
 
   std::shared_ptr<message_filters::Subscriber<sobits_interfaces::msg::DetectMaskArray, rclcpp_lifecycle::LifecycleNode>> sub_masks_;
   std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::PointCloud2, rclcpp_lifecycle::LifecycleNode>>           sub_pcl_;
-  std::shared_ptr<message_filters::Subscriber<sensor_msgs::msg::CameraInfo, rclcpp_lifecycle::LifecycleNode>>            sub_info_;
   std::shared_ptr<message_filters::Synchronizer<MaskCloudSyncPolicy>>                                                    sync_point_cloud_;
+
+  // camera_info latched from a plain subscription (not synced — see SyncPolicy note).
+  rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr sub_info_plain_;
+  sensor_msgs::msg::CameraInfo::ConstSharedPtr latest_info_;
+  std::mutex info_mutex_;
 
   pcl::search::KdTree<PointT>::Ptr kdtree_;
   pcl::EuclideanClusterExtraction<PointT> euclid_clustering_;
