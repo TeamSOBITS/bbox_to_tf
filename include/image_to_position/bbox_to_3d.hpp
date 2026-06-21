@@ -114,6 +114,7 @@ private:
   double voxel_leaf_size_;
 
   bool enable_id_;
+  bool enable_auto_rotation_;
 
   std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<vision_msgs::msg::Detection3DArray>> pub_obj_poses_;
   std::shared_ptr<rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::PointCloud2>>      pub_debug_cloud_;

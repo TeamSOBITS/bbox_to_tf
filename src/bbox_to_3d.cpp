@@ -38,6 +38,7 @@ BboxTo3D::BboxTo3D(const rclcpp::NodeOptions & options)
   this->declare_parameter("voxel_leaf_size", 0.01);
 
   this->declare_parameter("enable_id", false);
+  this->declare_parameter("enable_auto_rotation", false);
 }
 
 CallbackReturn BboxTo3D::on_configure(const rclcpp_lifecycle::State &)
@@ -63,6 +64,7 @@ CallbackReturn BboxTo3D::on_configure(const rclcpp_lifecycle::State &)
   voxel_leaf_size_ = this->get_parameter("voxel_leaf_size").as_double();
 
   enable_id_ = this->get_parameter("enable_id").as_bool();
+  enable_auto_rotation_ = this->get_parameter("enable_auto_rotation").as_bool();
 
   RCLCPP_INFO(this->get_logger(), "Configuring BboxTo3D Node...");
 
@@ -85,6 +87,7 @@ CallbackReturn BboxTo3D::on_configure(const rclcpp_lifecycle::State &)
   RCLCPP_INFO(this->get_logger(), "Voxel Leaf Size: %f", voxel_leaf_size_);
 
   RCLCPP_INFO(this->get_logger(), "Enable ID: %s", enable_id_ ? "true" : "false");
+  RCLCPP_INFO(this->get_logger(), "Enable Auto Rotation: %s", enable_auto_rotation_ ? "true" : "false");
 
 
   tfBuffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
@@ -357,11 +360,13 @@ vision_msgs::msg::Detection3D BboxTo3D::processBBoxClustering(
   object_rotate.y = 0.;
   object_rotate.z = 0.;
 
-  if ((xyz_centroid.x() - min_pt.x()) > (xyz_centroid.z() - min_pt.z() + noise_point_cloud_range_/4.)) {
-    object_rotate.y =  M_PI/2.;
-  } else if ((xyz_centroid.y() - min_pt.y()) > (xyz_centroid.z() - min_pt.z() + noise_point_cloud_range_/4.)) {
-    object_rotate.x = -M_PI/2.;
-    object_rotate.y =  M_PI/2.;
+  if (enable_auto_rotation_) {
+    if ((xyz_centroid.x() - min_pt.x()) > (xyz_centroid.z() - min_pt.z() + noise_point_cloud_range_/4.)) {
+      object_rotate.y =  M_PI/2.;
+    } else if ((xyz_centroid.y() - min_pt.y()) > (xyz_centroid.z() - min_pt.z() + noise_point_cloud_range_/4.)) {
+      object_rotate.x = -M_PI/2.;
+      object_rotate.y =  M_PI/2.;
+    }
   }
 
   geometry_msgs::msg::Pose obj_pose;
@@ -598,7 +603,8 @@ void BboxTo3D::callback_BBoxPointCloud(
 
   for (size_t i = 0; i < bbox_msg->detections.size(); i++) {
     auto detection = std::make_shared<vision_msgs::msg::Detection2D>(bbox_msg->detections[i]);
-    detection->id = generateObjectId(detection->id, i);
+
+    detection->id = generateObjectId(detection->results[0].hypothesis.class_id, i);
 
     point_cloud_bbox->clear();
     vision_msgs::msg::Detection3D object_pose;
@@ -651,7 +657,7 @@ void BboxTo3D::callback_BBoxDepthImage(
 
   for (size_t i = 0; i < bbox_msg->detections.size(); i++) {
     auto detection = std::make_shared<vision_msgs::msg::Detection2D>(bbox_msg->detections[i]);
-    detection->id = generateObjectId(detection->id, i);
+    detection->id = generateObjectId(detection->results[0].hypothesis.class_id, i);
 
     point_cloud_bbox->clear();
     point_cloud_bbox->header.frame_id = base_frame_name_;
